@@ -3,5 +3,5 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="Minecraft 5.1/Minecraft 5.1.vcxproj" />
+  <Project Path="Minecraft 5.1/Minecraft 5.1.vcxproj" Id="e9193e9e-e82b-4bac-9d5b-101fa1c5d52e" />
 </Solution>
