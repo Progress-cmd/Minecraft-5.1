@@ -19,7 +19,7 @@ Ce que j'ai appris avec :
 Ce qui est requis pour commencer avec le projet :
 
 - Avoir Visual Studio (2026 de préférence)
-- Faire les liens vers les librairies utilisées (elles sont fournies dans le dossier "lib")
+- Faire les liens vers les librairies utilisées (elles sont fournies dans le dossier "libs")
 - Avoir déjà joué à Minecraft (non, ça je déconne :)
 
 ### Installation
@@ -49,7 +49,7 @@ Les ressources :
 
 ## Versions
 
-//Liste des versions
+Ceci est la version 5.1, mais elle n'est pas encore fonctionnelle.
 
 # Auteur
 
