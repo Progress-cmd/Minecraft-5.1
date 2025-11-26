@@ -54,3 +54,5 @@ Ceci est la version 5.1, mais elle n'est pas encore fonctionnelle.
 # Auteur
 
 _Progress-cmd_
+
+Et voici ma page Notion, qui détaille un peu plus le projet : https://glowing-shoemaker-03a.notion.site/Suivi-2905380a75898105b2efdd0aa09ab324?source=copy_link
