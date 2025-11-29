@@ -10,7 +10,7 @@ public:
 	GLuint ID; // identifiant de référence
 	VAO(); // contructeur
 
-	void LinkVBO(VBO& VBO, GLuint layout); // lie le VBO au VAO
+	void LinkAttrib(VBO& VBO, GLuint layout, GLuint numComponents, GLenum type, GLsizeiptr stride, void* offset); // lie le VBO au VAO
 	void Bind(); // activation
 	void Unbind(); // désactivation
 	void Delete(); // destruction

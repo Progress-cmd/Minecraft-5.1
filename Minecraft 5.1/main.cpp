@@ -4,8 +4,8 @@
 
 
 // ============ Les librairie ============= //
-#include <iostream>
-#include <glad/glad.h>
+#include <iostream> // Flux d'entrées / sorties
+#include <glad/glad.h> // Utilisation d'OpenGL
 #include <GLFW/glfw3.h> // Création et gestion de la fenêtre
 #include <glm.hpp>
 #include <stb_image.h>
@@ -26,23 +26,48 @@ using namespace std;
 
 // ============ Les variables ============= //
 bool pleinEcran = false;
+bool verticeMode = false;
 bool keyF11 = false;
+bool keyF10 = false;
 
 GLfloat vertices[] =
 {
-	-0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f, // Lower left corner
-	0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f, // Lower right corner
-	0.0f, 0.5f * float(sqrt(3)) * 2 / 3, 0.0f, // Upper corner
-	-0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f, // Inner left
-	0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f, // Inner right
-	0.0f, -0.5f * float(sqrt(3)) / 3, 0.0f // Inner down
+	-0.5,  0.5, -0.5,
+	 0.5,  0.5, -0.5,
+	 0.5, -0.5, -0.5,
+	-0.5, -0.5, -0.5,
+	-0.5,  0.5,  0.5,
+	 0.5,  0.5,  0.5,
+	 0.5, -0.5,  0.5,
+	-0.5, -0.5,  0.5
+
+	//0, 256, 0,
+	//16, 256, 0,
+	//16, 0, 0,
+	//0, 0, 0,
+	//0, 256, 256,
+	//16, 256, 256,
+	//16, 0, 16,
+	//0, 0, 16
+	// 
+	//0, 0.00390625, 0,
+	//0.0625, 0.00390625, 0,
+	//0.0625, 0, 0,
+	//0, 0, 0,
+	//0, 0.00390625, 0.00390625,
+	//0.0625, 0.00390625, 0.00390625,
+	//0.0625, 0, 0.0625,
+	//0, 0, 0.0625
 };
 
 GLuint indices[] =
 {
-	0, 3, 5, // Lower left triangle
-	3, 2, 4, // Lower right triangle
-	5, 4, 1 // Upper triangle
+	3, 0, 1,  1, 2, 3,
+	2, 1, 5,  5, 6, 2,
+	6, 5, 4,  4, 7, 6,
+	7, 4, 0,  0, 3, 7,
+	0, 1, 5,  5, 4, 0,
+	7, 6, 2,  2, 3, 7
 };
 
 // ============ Les fonctions ============= //
@@ -101,9 +126,32 @@ void f11(GLFWwindow* window, int key, int action)
 		keyF11 = false;
 }
 
+void f10(GLFWwindow* window, int key, int action) {
+	if (key == GLFW_KEY_F10 && action == GLFW_PRESS)
+	{
+		if (!keyF10)
+			keyF10 = true;
+		{
+			if (verticeMode)
+			{
+				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+				verticeMode = false;
+			}
+			else
+			{
+				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+				verticeMode = true;
+			}
+		}
+	}
+	else
+		keyF10 = false;
+}
+
 void sortieClavier(GLFWwindow* window, int key, int scancode, int action, int mode) {
 	escape(window, key, action);
 	f11(window, key, action);
+	f10(window, key, action);
 }
 
 
@@ -111,16 +159,16 @@ void sortieClavier(GLFWwindow* window, int key, int scancode, int action, int mo
 // =========== La fonction main =========== //
 int main() {
 	GLFWInit();
-	if (!glfwInit()) { Erreur(0); return -1; } // vérifi que la librairie s'est bien initialisé
+	if (!glfwInit()) { Erreur(0); return -1; } // vérifi que la librairie s'est bien initialisée
 
 	GLFWwindow* window = glfwCreateWindow(800, 800, "Minecraft", NULL, NULL); // création de la fenêtre
-	if (window == NULL) { Erreur(1); glfwTerminate(); return -1; } // vérifi que la window est bien créé
+	if (window == NULL) { Erreur(1); glfwTerminate(); return -1; } // vérifi que la window est bien créée
 	glfwMakeContextCurrent(window); // dit à glfw d'utiliser la fenêtre window
 
 	glfwSetKeyCallback(window, sortieClavier); // écoute les entrées de clavier
 
-	gladLoadGL(); // chargement des fonction de glad
-	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) { Erreur(2); return -1; } // vérifi que la librairie a bien tout chargé
+	gladLoadGL(); // chargement des fonctions de glad
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) { Erreur(2); return -1; } // vérifi que la librairie a bien tout chargée
 
 	Shader shaderProgram("default.vert", "default.frag"); // génere l'objet shader en utilisant le default.vert et le default.frag
 
@@ -130,24 +178,28 @@ int main() {
 	VBO VBO1(vertices, sizeof(vertices)); // génere le VBO et le lie aux vertices
 	EBO EBO1(indices, sizeof(indices)); // génere le EBO et le lie aux indices
 
-	VAO1.LinkVBO(VBO1, 0); // lie le VBO au VAO
+	VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0); // lie le VBO au VAO
+	//VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)(3 * sizeof(float))); // si il y a des couleurs par points
 	// délie tout les objets pour eviter une erreur de modification
 	VAO1.Unbind();
 	VBO1.Unbind();
 	EBO1.Unbind();
 
+	GLuint uniID = glGetUniformLocation(shaderProgram.ID, "scale"); // permet d'affecter une valeur à "scale", qui se trouve dans le default.vert
+
 	// ========= La boucle principale ========= //
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents(); // dit de faire attention aux évenements que va subire la fenêtre
-
+		
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f); // efface le tampon et lui donne une couleur définie
 		glClear(GL_COLOR_BUFFER_BIT); // applique le changement précédent
 
 		shaderProgram.Activate(); // dit à OpenGL quel shaderProgram utiliser
+		glUniform1f(uniID, 0.5f); // affecte une valeur à "scale"
 		VAO1.Bind(); // lie le VAO pour que OpenGL sache l'utiliser
 
-		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0); // dessine les éléments (type de forme, nombre d'éléments, type des indices, index des indices)
+		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(int), GL_UNSIGNED_INT, 0); // dessine les éléments (type de forme, nombre d'éléments, type des indices, index des indices)
 
 		glfwSwapBuffers(window); // échange les buffers
 	}
