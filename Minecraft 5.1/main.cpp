@@ -60,6 +60,14 @@ GLfloat vertices[] =
 	//0, 0, 0.0625
 };
 
+GLfloat textures[] =
+{
+	0.0f, 0.0f,
+	0.0f, 1.0f,
+	1.0f, 1.0f,
+	1.0f, 0.0f
+};
+
 GLuint indices[] =
 {
 	3, 0, 1,  1, 2, 3,
@@ -71,7 +79,7 @@ GLuint indices[] =
 };
 
 // ============ Les fonctions ============= //
-void Erreur(int value)
+void Erreurs(int value)
 {
 	switch (value)
 	{
@@ -159,16 +167,16 @@ void sortieClavier(GLFWwindow* window, int key, int scancode, int action, int mo
 // =========== La fonction main =========== //
 int main() {
 	GLFWInit();
-	if (!glfwInit()) { Erreur(0); return -1; } // vérifi que la librairie s'est bien initialisée
+	if (!glfwInit()) { Erreurs(0); return -1; } // vérifi que la librairie s'est bien initialisée
 
 	GLFWwindow* window = glfwCreateWindow(800, 800, "Minecraft", NULL, NULL); // création de la fenêtre
-	if (window == NULL) { Erreur(1); glfwTerminate(); return -1; } // vérifi que la window est bien créée
+	if (window == NULL) { Erreurs(1); glfwTerminate(); return -1; } // vérifi que la window est bien créée
 	glfwMakeContextCurrent(window); // dit à glfw d'utiliser la fenêtre window
 
 	glfwSetKeyCallback(window, sortieClavier); // écoute les entrées de clavier
 
 	gladLoadGL(); // chargement des fonctions de glad
-	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) { Erreur(2); return -1; } // vérifi que la librairie a bien tout chargée
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) { Erreurs(2); return -1; } // vérifi que la librairie a bien tout chargée
 
 	Shader shaderProgram("default.vert", "default.frag"); // génere l'objet shader en utilisant le default.vert et le default.frag
 
@@ -176,16 +184,43 @@ int main() {
 	VAO1.Bind(); // et le lie
 
 	VBO VBO1(vertices, sizeof(vertices)); // génere le VBO et le lie aux vertices
+	VBO VBO2(textures, sizeof(textures));
 	EBO EBO1(indices, sizeof(indices)); // génere le EBO et le lie aux indices
 
-	VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0); // lie le VBO au VAO
-	//VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)(3 * sizeof(float))); // si il y a des couleurs par points
+	VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 5 * sizeof(float), (void*)0); // lie le VBO au VAO
+	VAO1.LinkAttrib(VBO2, 1, 2, GL_FLOAT, 5 * sizeof(float), (void*)0); // si il y a des couleurs par points
 	// délie tout les objets pour eviter une erreur de modification
 	VAO1.Unbind();
 	VBO1.Unbind();
 	EBO1.Unbind();
 
 	GLuint uniID = glGetUniformLocation(shaderProgram.ID, "scale"); // permet d'affecter une valeur à "scale", qui se trouve dans le default.vert
+
+	// Texture
+	int widthImg, heightImg, nuColCh; // les informations de l'image
+	unsigned char* bytes = stbi_load("bitmap.png", &widthImg, &heightImg, &nuColCh, 0); // stockage de l'image chargée dans une chaîne de caractère
+
+	GLuint texture; // création de l'objet texture
+	glGenTextures(1, &texture); // génération de la texture, (nb texture, ptr vers la référence)
+	glActiveTexture(GL_TEXTURE0); // activation de la texture, ce qui la met dans un emplacement spécifique
+	glBindTexture(GL_TEXTURE_2D, texture); // liage de la texture
+
+	glTexParameteri(GL_TEXTURE0, GL_TEXTURE_MIN_FILTER, GL_NEAREST); // ajustage des paramètres de la texture
+	glTexParameteri(GL_TEXTURE0, GL_TEXTURE_MAG_FILTER, GL_NEAREST); // garde les pixels tel quel, sans en rajouter
+
+	glTexParameteri(GL_TEXTURE0, GL_TEXTURE_WRAP_S, GL_REPEAT); // ajustage des paramètres de la texture
+	glTexParameteri(GL_TEXTURE0, GL_TEXTURE_WRAP_T, GL_REPEAT); // répète si elle a de la place disponible autour
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, widthImg, heightImg, 0, GL_RGBA, GL_UNSIGNED_BYTE, bytes); // génération de la texture
+	glGenerateMipmap(GL_TEXTURE_2D); // fct qui enregistre des versions plus petite de l'image de base
+
+	stbi_image_free(bytes); // libération des données
+	glBindTexture(GL_TEXTURE_2D, 0); // dissociation des textures pour éviter des erreurs de modification
+
+	GLuint tex0Uni = glGetUniformLocation(shaderProgram.ID, "tex0"); // indique à notre uniform l'emplacement de la texture
+	shaderProgram.Activate();
+	glUniform1i(tex0Uni, 0);
+
 
 	// ========= La boucle principale ========= //
 	while (!glfwWindowShouldClose(window))
@@ -196,6 +231,7 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT); // applique le changement précédent
 
 		shaderProgram.Activate(); // dit à OpenGL quel shaderProgram utiliser
+		glBindTexture(GL_TEXTURE_2D, texture); // liage de la texture
 		glUniform1f(uniID, 0.5f); // affecte une valeur à "scale"
 		VAO1.Bind(); // lie le VAO pour que OpenGL sache l'utiliser
 
@@ -208,6 +244,7 @@ int main() {
 	VAO1.Delete();
 	VBO1.Delete();
 	EBO1.Delete();
+	glDeleteTextures(1, &texture);
 	shaderProgram.Delete();
 
 	glfwDestroyWindow(window); // Fin de la fenêtre

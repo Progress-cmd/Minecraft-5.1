@@ -135,10 +135,12 @@
     <ClCompile Include="EBO.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="shaderClass.cpp" />
+    <ClCompile Include="stb.cpp" />
     <ClCompile Include="VAO.cpp" />
     <ClCompile Include="VBO.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\README.md" />
     <None Include="default.frag" />
     <None Include="default.vert" />
   </ItemGroup>
