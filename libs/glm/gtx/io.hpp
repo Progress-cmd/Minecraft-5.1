@@ -23,17 +23,12 @@
 #include "../glm.hpp"
 #include "../gtx/quaternion.hpp"
 
-#ifndef GLM_ENABLE_EXPERIMENTAL
-#	error "GLM: GLM_GTX_io is an experimental extension and may change in the future. Use #define GLM_ENABLE_EXPERIMENTAL before including it, if you really want to use it."
-#elif GLM_MESSAGES == GLM_ENABLE && !defined(GLM_EXT_INCLUDED)
-#	pragma message("GLM: GLM_GTX_io extension included")
-#endif
-
-#if GLM_COMPILER & GLM_COMPILER_CLANG
-#	pragma clang diagnostic push
-#	pragma clang diagnostic ignored "-Wpadded"
-#	pragma clang diagnostic ignored "-Wshorten-64-to-32"
-#	pragma clang diagnostic ignored "-Wglobal-constructors"
+#if GLM_MESSAGES == GLM_ENABLE && !defined(GLM_EXT_INCLUDED)
+#	ifndef GLM_ENABLE_EXPERIMENTAL
+#		pragma message("GLM: GLM_GTX_io is an experimental extension and may change in the future. Use #define GLM_ENABLE_EXPERIMENTAL before including it, if you really want to use it.")
+#	else
+#		pragma message("GLM: GLM_GTX_io extension included")
+#	endif
 #endif
 
 #include <iosfwd>  // std::basic_ostream<> (fwd)
@@ -68,8 +63,8 @@ namespace glm
 			char_type  newline;
 			order_type order;
 
-			GLM_FUNC_DISCARD_DECL explicit format_punct(size_t a = 0);
-			GLM_FUNC_DISCARD_DECL explicit format_punct(format_punct const&);
+			GLM_FUNC_DECL explicit format_punct(size_t a = 0);
+			GLM_FUNC_DECL explicit format_punct(format_punct const&);
 		};
 
 		template<typename CTy, typename CTr = std::char_traits<CTy> >
@@ -77,8 +72,8 @@ namespace glm
 
 		public:
 
-			GLM_FUNC_DISCARD_DECL explicit basic_state_saver(std::basic_ios<CTy,CTr>&);
-			GLM_FUNC_DISCARD_DECL ~basic_state_saver();
+			GLM_FUNC_DECL explicit basic_state_saver(std::basic_ios<CTy,CTr>&);
+			GLM_FUNC_DECL ~basic_state_saver();
 
 		private:
 
@@ -106,8 +101,8 @@ namespace glm
 		{
 		public:
 
-			GLM_FUNC_DISCARD_DECL explicit basic_format_saver(std::basic_ios<CTy,CTr>&);
-			GLM_FUNC_DISCARD_DECL ~basic_format_saver();
+			GLM_FUNC_DECL explicit basic_format_saver(std::basic_ios<CTy,CTr>&);
+			GLM_FUNC_DECL ~basic_format_saver();
 
 		private:
 
@@ -123,14 +118,14 @@ namespace glm
 		{
 			unsigned value;
 
-			GLM_FUNC_DISCARD_DECL explicit precision(unsigned);
+			GLM_FUNC_DECL explicit precision(unsigned);
 		};
 
 		struct width
 		{
 			unsigned value;
 
-			GLM_FUNC_DISCARD_DECL explicit width(unsigned);
+			GLM_FUNC_DECL explicit width(unsigned);
 		};
 
 		template<typename CTy>
@@ -138,14 +133,14 @@ namespace glm
 		{
 			CTy value[3];
 
-			GLM_FUNC_DISCARD_DECL explicit delimeter(CTy /* left */, CTy /* right */, CTy /* separator */ = ',');
+			GLM_FUNC_DECL explicit delimeter(CTy /* left */, CTy /* right */, CTy /* separator */ = ',');
 		};
 
 		struct order
 		{
 			order_type value;
 
-			GLM_FUNC_DISCARD_DECL explicit order(order_type);
+			GLM_FUNC_DECL explicit order(order_type);
 		};
 
 		// functions, inlined (inline)
@@ -155,7 +150,7 @@ namespace glm
 		template<typename FTy, typename CTy, typename CTr>
 		std::basic_ios<CTy,CTr>& formatted(std::basic_ios<CTy,CTr>&);
 		template<typename FTy, typename CTy, typename CTr>
-		std::basic_ios<CTy,CTr>& unformatted(std::basic_ios<CTy,CTr>&);
+		std::basic_ios<CTy,CTr>& unformattet(std::basic_ios<CTy,CTr>&);
 
 		template<typename CTy, typename CTr>
 		std::basic_ostream<CTy, CTr>& operator<<(std::basic_ostream<CTy, CTr>&, precision const&);
@@ -168,43 +163,39 @@ namespace glm
 	}//namespace io
 
 	template<typename CTy, typename CTr, typename T, qualifier Q>
-	GLM_FUNC_DISCARD_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, qua<T, Q> const&);
+	GLM_FUNC_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, qua<T, Q> const&);
 	template<typename CTy, typename CTr, typename T, qualifier Q>
-	GLM_FUNC_DISCARD_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, vec<1, T, Q> const&);
+	GLM_FUNC_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, vec<1, T, Q> const&);
 	template<typename CTy, typename CTr, typename T, qualifier Q>
-	GLM_FUNC_DISCARD_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, vec<2, T, Q> const&);
+	GLM_FUNC_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, vec<2, T, Q> const&);
 	template<typename CTy, typename CTr, typename T, qualifier Q>
-	GLM_FUNC_DISCARD_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, vec<3, T, Q> const&);
+	GLM_FUNC_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, vec<3, T, Q> const&);
 	template<typename CTy, typename CTr, typename T, qualifier Q>
-	GLM_FUNC_DISCARD_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, vec<4, T, Q> const&);
+	GLM_FUNC_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, vec<4, T, Q> const&);
 	template<typename CTy, typename CTr, typename T, qualifier Q>
-	GLM_FUNC_DISCARD_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, mat<2, 2, T, Q> const&);
+	GLM_FUNC_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, mat<2, 2, T, Q> const&);
 	template<typename CTy, typename CTr, typename T, qualifier Q>
-	GLM_FUNC_DISCARD_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, mat<2, 3, T, Q> const&);
+	GLM_FUNC_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, mat<2, 3, T, Q> const&);
 	template<typename CTy, typename CTr, typename T, qualifier Q>
-	GLM_FUNC_DISCARD_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, mat<2, 4, T, Q> const&);
+	GLM_FUNC_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, mat<2, 4, T, Q> const&);
 	template<typename CTy, typename CTr, typename T, qualifier Q>
-	GLM_FUNC_DISCARD_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, mat<3, 2, T, Q> const&);
+	GLM_FUNC_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, mat<3, 2, T, Q> const&);
 	template<typename CTy, typename CTr, typename T, qualifier Q>
-	GLM_FUNC_DISCARD_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, mat<3, 3, T, Q> const&);
+	GLM_FUNC_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, mat<3, 3, T, Q> const&);
 	template<typename CTy, typename CTr, typename T, qualifier Q>
-	GLM_FUNC_DISCARD_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, mat<3, 4, T, Q> const&);
+	GLM_FUNC_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, mat<3, 4, T, Q> const&);
 	template<typename CTy, typename CTr, typename T, qualifier Q>
-	GLM_FUNC_DISCARD_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, mat<4, 2, T, Q> const&);
+	GLM_FUNC_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, mat<4, 2, T, Q> const&);
 	template<typename CTy, typename CTr, typename T, qualifier Q>
-	GLM_FUNC_DISCARD_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, mat<4, 3, T, Q> const&);
+	GLM_FUNC_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, mat<4, 3, T, Q> const&);
 	template<typename CTy, typename CTr, typename T, qualifier Q>
-	GLM_FUNC_DISCARD_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, mat<4, 4, T, Q> const&);
+	GLM_FUNC_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, mat<4, 4, T, Q> const&);
 
-	template<typename CTy, typename CTr, typename T, qualifier Q>
-	GLM_FUNC_DISCARD_DECL std::basic_ostream<CTy,CTr> & operator<<(std::basic_ostream<CTy,CTr> &,
+  template<typename CTy, typename CTr, typename T, qualifier Q>
+	GLM_FUNC_DECL std::basic_ostream<CTy,CTr> & operator<<(std::basic_ostream<CTy,CTr> &,
                                                          std::pair<mat<4, 4, T, Q> const, mat<4, 4, T, Q> const> const&);
 
 	/// @}
 }//namespace glm
-
-#if GLM_COMPILER & GLM_COMPILER_CLANG
-#	pragma clang diagnostic pop
-#endif
 
 #include "io.inl"

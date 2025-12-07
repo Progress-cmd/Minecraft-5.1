@@ -8,14 +8,18 @@
 #include <glad/glad.h> // Utilisation d'OpenGL
 #include <GLFW/glfw3.h> // Création et gestion de la fenêtre
 #include <glm.hpp>
-#include <stb_image.h>
+#include <gtc/matrix_transform.hpp>
+#include <gtc/type_ptr.hpp>
+#include <stb_image.h> // Utilisation des textures
 
 
 // ========= Les fichiers sources ========= //
-#include"shaderClass.h"
-#include"VAO.h"
-#include"VBO.h"
-#include"EBO.h"
+#include "shaderClass.h"
+#include "VAO.h"
+#include "VBO.h"
+#include "EBO.h"
+#include "Texture.h"
+#include "Camera.h"
 
 
 // ======================================== //
@@ -29,54 +33,66 @@ bool pleinEcran = false;
 bool verticeMode = false;
 bool keyF11 = false;
 bool keyF10 = false;
+int width = 800, height = 800;
 
 GLfloat vertices[] =
 {
-	-0.5,  0.5, -0.5,
-	 0.5,  0.5, -0.5,
-	 0.5, -0.5, -0.5,
-	-0.5, -0.5, -0.5,
-	-0.5,  0.5,  0.5,
-	 0.5,  0.5,  0.5,
-	 0.5, -0.5,  0.5,
-	-0.5, -0.5,  0.5
+	// Face avant
+	-0.5f, -0.5f, -0.5f,   1.0f / 16 * 0,  1.0f / 16 * 15,
+	-0.5f,  0.5f, -0.5f,   1.0f / 16 * 0,  1.0f / 16 * 16,
+	 0.5f,  0.5f, -0.5f,   1.0f / 16 * 1,  1.0f / 16 * 16,
+	 0.5f, -0.5f, -0.5f,   1.0f / 16 * 1,  1.0f / 16 * 15,
 
-	//0, 256, 0,
-	//16, 256, 0,
-	//16, 0, 0,
-	//0, 0, 0,
-	//0, 256, 256,
-	//16, 256, 256,
-	//16, 0, 16,
-	//0, 0, 16
-	// 
-	//0, 0.00390625, 0,
-	//0.0625, 0.00390625, 0,
-	//0.0625, 0, 0,
-	//0, 0, 0,
-	//0, 0.00390625, 0.00390625,
-	//0.0625, 0.00390625, 0.00390625,
-	//0.0625, 0, 0.0625,
-	//0, 0, 0.0625
+	 // Face droite
+	 0.5f, -0.5f, -0.5f,   1.0f / 16 * 0,  1.0f / 16 * 15,
+	 0.5f,  0.5f, -0.5f,   1.0f / 16 * 0,  1.0f / 16 * 16,
+	 0.5f,  0.5f,  0.5f,   1.0f / 16 * 1,  1.0f / 16 * 16,
+	 0.5f, -0.5f,  0.5f,   1.0f / 16 * 1,  1.0f / 16 * 15,
+
+	 // Face arrière
+	  0.5f, -0.5f,  0.5f,   1.0f / 16 * 0,  1.0f / 16 * 15,
+	  0.5f,  0.5f,  0.5f,   1.0f / 16 * 0,  1.0f / 16 * 16,
+	 -0.5f,  0.5f,  0.5f,   1.0f / 16 * 1,  1.0f / 16 * 16,
+	 -0.5f, -0.5f,  0.5f,   1.0f / 16 * 1,  1.0f / 16 * 15,
+
+	 // Face gauche
+	-0.5f, -0.5f,  0.5f,   1.0f / 16 * 0,  1.0f / 16 * 15,
+	-0.5f,  0.5f,  0.5f,   1.0f / 16 * 0,  1.0f / 16 * 16,
+	-0.5f,  0.5f, -0.5f,   1.0f / 16 * 1,  1.0f / 16 * 16,
+	-0.5f, -0.5f, -0.5f,   1.0f / 16 * 1,  1.0f / 16 * 15,
+
+	  // Face du haut
+	-0.5f,  0.5f, -0.5f,   1.0f / 16 * 0,  1.0f / 16 * 15,
+	-0.5f,  0.5f,  0.5f,   1.0f / 16 * 0,  1.0f / 16 * 16,
+	 0.5f,  0.5f,  0.5f,   1.0f / 16 * 1,  1.0f / 16 * 16,
+	 0.5f,  0.5f, -0.5f,   1.0f / 16 * 1,  1.0f / 16 * 15,
+
+	  // Face du bas
+	-0.5f, -0.5f,  0.5f,   1.0f / 16 * 0,  1.0f / 16 * 15,
+	 0.5f, -0.5f,  0.5f,   1.0f / 16 * 0,  1.0f / 16 * 16,
+	 0.5f, -0.5f, -0.5f,   1.0f / 16 * 1,  1.0f / 16 * 16,
+	-0.5f, -0.5f, -0.5f,   1.0f / 16 * 1,  1.0f / 16 * 15
 };
 
-GLfloat textures[] =
-{
-	0.0f, 0.0f,
-	0.0f, 1.0f,
-	1.0f, 1.0f,
-	1.0f, 0.0f
-};
+//0, 256, 0,
+//16, 256, 0,
+//16, 0, 0,
+//0, 0, 0,
+//0, 256, 256,
+//16, 256, 256,
+//16, 0, 16,
+//0, 0, 16
 
 GLuint indices[] =
 {
-	3, 0, 1,  1, 2, 3,
-	2, 1, 5,  5, 6, 2,
-	6, 5, 4,  4, 7, 6,
-	7, 4, 0,  0, 3, 7,
-	0, 1, 5,  5, 4, 0,
-	7, 6, 2,  2, 3, 7
+	0, 1, 2,   2, 3, 0,       // avant
+	4, 5, 6,   6, 7, 4,       // droite
+	8, 9,10,  10,11, 8,       // arrière
+   12,13,14,  14,15,12,       // gauche
+   16,17,18,  18,19,16,       // haut
+   20,21,22,  22,23,20        // bas
 };
+
 
 // ============ Les fonctions ============= //
 void Erreurs(int value)
@@ -107,7 +123,7 @@ void escape(GLFWwindow* window, int key, int action)
 		glfwSetWindowShouldClose(window, GL_TRUE); // fermeture de la fenêtre
 }
 
-void f11(GLFWwindow* window, int key, int action)
+void f11(GLFWwindow* window, int key, int action)	
 {
 	if (key == GLFW_KEY_F11 && action == GLFW_PRESS)
 	{
@@ -116,8 +132,8 @@ void f11(GLFWwindow* window, int key, int action)
 		{
 			if (pleinEcran)
 			{
-				glfwSetWindowMonitor(window, NULL, 100, 100, 800, 600, GLFW_DONT_CARE);
-				glViewport(0, 0, 800, 600);
+				glfwSetWindowMonitor(window, NULL, 100, 100, width, height, GLFW_DONT_CARE);
+				glViewport(0, 0, width, height);
 				pleinEcran = false;
 			}
 			else
@@ -184,43 +200,21 @@ int main() {
 	VAO1.Bind(); // et le lie
 
 	VBO VBO1(vertices, sizeof(vertices)); // génere le VBO et le lie aux vertices
-	VBO VBO2(textures, sizeof(textures));
 	EBO EBO1(indices, sizeof(indices)); // génere le EBO et le lie aux indices
 
 	VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 5 * sizeof(float), (void*)0); // lie le VBO au VAO
-	VAO1.LinkAttrib(VBO2, 1, 2, GL_FLOAT, 5 * sizeof(float), (void*)0); // si il y a des couleurs par points
+	VAO1.LinkAttrib(VBO1, 1, 2, GL_FLOAT, 5 * sizeof(float), (void*)(3 * sizeof(float))); // si il y a des couleurs par points
 	// délie tout les objets pour eviter une erreur de modification
 	VAO1.Unbind();
 	VBO1.Unbind();
 	EBO1.Unbind();
 
-	GLuint uniID = glGetUniformLocation(shaderProgram.ID, "scale"); // permet d'affecter une valeur à "scale", qui se trouve dans le default.vert
+	Texture bitmap("bitmap.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE); // création de l'objet bitmap
+	bitmap.texUnit(shaderProgram, "tex0", 0);
 
-	// Texture
-	int widthImg, heightImg, nuColCh; // les informations de l'image
-	unsigned char* bytes = stbi_load("bitmap.png", &widthImg, &heightImg, &nuColCh, 0); // stockage de l'image chargée dans une chaîne de caractère
+	glEnable(GL_DEPTH_TEST); // permet de dire à OpenGL de tenir compte de la perspective lors de l'affichage des textures
 
-	GLuint texture; // création de l'objet texture
-	glGenTextures(1, &texture); // génération de la texture, (nb texture, ptr vers la référence)
-	glActiveTexture(GL_TEXTURE0); // activation de la texture, ce qui la met dans un emplacement spécifique
-	glBindTexture(GL_TEXTURE_2D, texture); // liage de la texture
-
-	glTexParameteri(GL_TEXTURE0, GL_TEXTURE_MIN_FILTER, GL_NEAREST); // ajustage des paramètres de la texture
-	glTexParameteri(GL_TEXTURE0, GL_TEXTURE_MAG_FILTER, GL_NEAREST); // garde les pixels tel quel, sans en rajouter
-
-	glTexParameteri(GL_TEXTURE0, GL_TEXTURE_WRAP_S, GL_REPEAT); // ajustage des paramètres de la texture
-	glTexParameteri(GL_TEXTURE0, GL_TEXTURE_WRAP_T, GL_REPEAT); // répète si elle a de la place disponible autour
-
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, widthImg, heightImg, 0, GL_RGBA, GL_UNSIGNED_BYTE, bytes); // génération de la texture
-	glGenerateMipmap(GL_TEXTURE_2D); // fct qui enregistre des versions plus petite de l'image de base
-
-	stbi_image_free(bytes); // libération des données
-	glBindTexture(GL_TEXTURE_2D, 0); // dissociation des textures pour éviter des erreurs de modification
-
-	GLuint tex0Uni = glGetUniformLocation(shaderProgram.ID, "tex0"); // indique à notre uniform l'emplacement de la texture
-	shaderProgram.Activate();
-	glUniform1i(tex0Uni, 0);
-
+	Camera camera(width, height, glm::vec3(0.0f, 0.0f, 2.0f)); // création de l'objet caméra
 
 	// ========= La boucle principale ========= //
 	while (!glfwWindowShouldClose(window))
@@ -228,11 +222,14 @@ int main() {
 		glfwPollEvents(); // dit de faire attention aux évenements que va subire la fenêtre
 		
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f); // efface le tampon et lui donne une couleur définie
-		glClear(GL_COLOR_BUFFER_BIT); // applique le changement précédent
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // applique le changement précédent
 
 		shaderProgram.Activate(); // dit à OpenGL quel shaderProgram utiliser
-		glBindTexture(GL_TEXTURE_2D, texture); // liage de la texture
-		glUniform1f(uniID, 0.5f); // affecte une valeur à "scale"
+
+		camera.Inputs(window);
+		camera.Matrix(45.0f, 0.1f, 100.0f, shaderProgram, "camMatrix"); // créé et envoie les matrices aux shaders
+
+		bitmap.Bind(); // liage de la texture
 		VAO1.Bind(); // lie le VAO pour que OpenGL sache l'utiliser
 
 		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(int), GL_UNSIGNED_INT, 0); // dessine les éléments (type de forme, nombre d'éléments, type des indices, index des indices)
@@ -244,7 +241,7 @@ int main() {
 	VAO1.Delete();
 	VBO1.Delete();
 	EBO1.Delete();
-	glDeleteTextures(1, &texture);
+	bitmap.Delete();
 	shaderProgram.Delete();
 
 	glfwDestroyWindow(window); // Fin de la fenêtre

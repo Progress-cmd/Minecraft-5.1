@@ -132,10 +132,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\libs\glad\src\glad.c" />
+    <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="Camera.h" />
     <ClCompile Include="EBO.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="shaderClass.cpp" />
     <ClCompile Include="stb.cpp" />
+    <ClCompile Include="Texture.cpp" />
     <ClCompile Include="VAO.cpp" />
     <ClCompile Include="VBO.cpp" />
   </ItemGroup>
@@ -147,6 +150,7 @@
   <ItemGroup>
     <ClInclude Include="EBO.h" />
     <ClInclude Include="shaderClass.h" />
+    <ClInclude Include="Texture.h" />
     <ClInclude Include="VAO.h" />
     <ClInclude Include="VBO.h" />
   </ItemGroup>

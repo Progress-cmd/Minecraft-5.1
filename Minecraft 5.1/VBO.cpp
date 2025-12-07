@@ -1,4 +1,5 @@
 #include"VBO.h"
+#include<iostream>
 
 // Création du VBO (Vertex Buffer Object) un tampon de sommets
 VBO::VBO(GLfloat* vertices, GLsizeiptr size)

@@ -7,11 +7,11 @@ layout (location = 1) in vec2 aTex; // entrée de type vec2 qui utilise la dispos
 
 out vec2 texCoord; // défini une sortie
 
-uniform float scale; //permet de changer la taille globale. uniform le rend accessible partout, même dans main.cpp
+uniform mat4 camMatrix; // uniform des matrices qui composent la caméra
 
 
 void main()
 {
-   gl_Position = vec4(aPos.x + aPos.x*scale, aPos.y + aPos.y*scale, aPos.z + aPos.z*scale, 1.0);
+   gl_Position = camMatrix * vec4(aPos, 1.0);
    texCoord = aTex; // affecte la valeur en sortie
 }
