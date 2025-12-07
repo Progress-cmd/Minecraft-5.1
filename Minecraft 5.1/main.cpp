@@ -29,10 +29,6 @@
 using namespace std;
 
 // ============ Les variables ============= //
-bool pleinEcran = false;
-bool verticeMode = false;
-bool keyF11 = false;
-bool keyF10 = false;
 int width = 800, height = 800;
 
 GLfloat vertices[] =
@@ -123,59 +119,8 @@ void escape(GLFWwindow* window, int key, int action)
 		glfwSetWindowShouldClose(window, GL_TRUE); // fermeture de la fenêtre
 }
 
-void f11(GLFWwindow* window, int key, int action)	
-{
-	if (key == GLFW_KEY_F11 && action == GLFW_PRESS)
-	{
-		if (!keyF11)
-			keyF11 = true;
-		{
-			if (pleinEcran)
-			{
-				glfwSetWindowMonitor(window, NULL, 100, 100, width, height, GLFW_DONT_CARE);
-				glViewport(0, 0, width, height);
-				pleinEcran = false;
-			}
-			else
-			{
-				GLFWmonitor* monitor = glfwGetPrimaryMonitor(); // récupère le moniteur principal
-				const GLFWvidmode* mode = glfwGetVideoMode(monitor); // résolution du moniteur
-				glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate); // met en plein écran
-				glViewport(0, 0, mode->width, mode->height);
-				pleinEcran = true;
-			}
-		}
-	}
-	else
-		keyF11 = false;
-}
-
-void f10(GLFWwindow* window, int key, int action) {
-	if (key == GLFW_KEY_F10 && action == GLFW_PRESS)
-	{
-		if (!keyF10)
-			keyF10 = true;
-		{
-			if (verticeMode)
-			{
-				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-				verticeMode = false;
-			}
-			else
-			{
-				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-				verticeMode = true;
-			}
-		}
-	}
-	else
-		keyF10 = false;
-}
-
 void sortieClavier(GLFWwindow* window, int key, int scancode, int action, int mode) {
 	escape(window, key, action);
-	f11(window, key, action);
-	f10(window, key, action);
 }
 
 
@@ -226,6 +171,8 @@ int main() {
 
 		shaderProgram.Activate(); // dit à OpenGL quel shaderProgram utiliser
 
+		camera.f10(window, shaderProgram, "verticeMode"); // permet le mode vertice
+		camera.f11(window); // permet le mode plein écran
 		camera.Inputs(window);
 		camera.Matrix(45.0f, 0.1f, 100.0f, shaderProgram, "camMatrix"); // créé et envoie les matrices aux shaders
 

@@ -13,10 +13,9 @@ void Camera::Matrix(float FOVdeg, float nearPlan, float farPlan, Shader& shader,
 	glm::mat4 projection = glm::mat4(1.0f); // initialisation de la matrice de projection en tant qu'indentitée
 
 	view = glm::lookAt(Position, Position + Orientation, Up); // fct (position de la caméra, cible à regarder, vecteur vertical)
-	projection = glm::perspective(glm::radians(FOVdeg), (float)(width / height), nearPlan, farPlan);  // détermine le champs de vision de la caméra, en radian. Et la distance minimale et maximale à afficher
+	projection = glm::perspective(glm::radians(FOVdeg), (float)width / height, nearPlan, farPlan);  // détermine le champs de vision de la caméra, en radian. Et la distance minimale et maximale à afficher
 
 	glUniformMatrix4fv(glGetUniformLocation(shader.ID, uniform), 1, GL_FALSE, glm::value_ptr(projection * view)); // affecte une valeur aux uniform et les envoie au shader
-
 }
 
 void Camera::Inputs(GLFWwindow* window)
@@ -24,7 +23,7 @@ void Camera::Inputs(GLFWwindow* window)
 	// ZQSD
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 	{
-		Position += speed * Orientation;
+		Position += speed * glm::normalize(glm::vec3(Orientation.x, 0.0f, Orientation.z));
 	}
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 	{
@@ -32,7 +31,7 @@ void Camera::Inputs(GLFWwindow* window)
 	}
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 	{
-		Position += speed * -Orientation;
+		Position += speed * -glm::normalize(glm::vec3(Orientation.x, 0.0f, Orientation.z));
 	}
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 	{
@@ -61,10 +60,10 @@ void Camera::Inputs(GLFWwindow* window)
 	{
 		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN); // cache le curseur
 
-		if (firstClick)
+		if (leftClic)
 		{
 			glfwSetCursorPos(window, (width / 2), (height / 2));
-			firstClick = false;
+			leftClic = false;
 		}
 
 		// enregistre les coordonnées du curseur
@@ -90,6 +89,62 @@ void Camera::Inputs(GLFWwindow* window)
 	else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
 	{
 		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); // fait réapparaître le curseur
-		firstClick = true;
+		leftClic = true;
 	}
 }
+
+void Camera::f10(GLFWwindow* window, Shader& shader, const char* uniform)
+{
+	if (glfwGetKey(window, GLFW_KEY_F10) == GLFW_PRESS)
+	{
+		glGetUniformLocation(shader.ID, uniform);
+		if (keyF10)
+		{
+			keyF10 = false;
+		}
+		glUniform1i(glGetUniformLocation(shader.ID, uniform), true);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	}
+	else if (glfwGetKey(window, GLFW_KEY_F10) == GLFW_RELEASE)
+	{
+		glUniform1i(glGetUniformLocation(shader.ID, uniform), false);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		keyF10 = true;
+	}
+}
+
+void Camera::f11(GLFWwindow* window)
+	{
+		if (glfwGetKey(window, GLFW_KEY_F11) == GLFW_PRESS)
+		{
+			if (!keyF11) // touche pressée pour la première fois
+			{
+				keyF11 = true;
+
+				if (pleinEcran)
+				{
+					// revenir en fenêtre
+					glfwSetWindowMonitor(window, NULL, 100, 100, 800, 800, GLFW_DONT_CARE);
+					glViewport(0, 0, 800, 800);
+					width = 800;
+					height = 800;
+					pleinEcran = false;
+				}
+				else
+				{
+					// passer en plein écran
+					GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+					const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+					glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+					glViewport(0, 0, mode->width, mode->height);
+					width = mode->width;
+					height = mode->height;
+					pleinEcran = true;
+				}
+			}
+		}
+		else
+		{
+			keyF11 = false; // la touche a été relâchée
+		}
+	}
