@@ -43,7 +43,7 @@ void Chunk::Generation()
 				uint8_t b = blocks[x + 16 * (z + 16 * y)].type;
 				if (b == 0) continue;
 
-				typeBloc(0);
+				typeBloc(3);
 				FACE_POS_X.uvs = uvArray;
 				FACE_NEG_X.uvs = uvArray;
 				FACE_POS_Y.uvs = uvArray;
@@ -142,8 +142,15 @@ void Chunk::Delete()
 
 void Chunk::typeBloc(int id)
 {
-	uvArray[0] = glm::vec2(1.0f / 16 * id + 0,   1.0f / 16 * (15 - id));
-	uvArray[1] = glm::vec2(1.0f / 16 * id + 0,   1.0f / 16 * (16 - id));
-	uvArray[2] = glm::vec2(1.0f / 16 * (id + 1), 1.0f / 16 * (16 - id));
-	uvArray[3] = glm::vec2(1.0f / 16 * (id + 1), 1.0f / 16 * (15 - id));
+	int col = id % 16;
+	int row = id / 16;
+
+	float u = col / 16.0f;
+	float v = row / 16.0f;
+
+	uvArray[0] = glm::vec2(u, 1.0f - v - 1.0f / 16);
+	uvArray[1] = glm::vec2(u, 1.0f - v);
+	uvArray[2] = glm::vec2(u + 1.0f / 16, 1.0f - v);
+	uvArray[3] = glm::vec2(u + 1.0f / 16, 1.0f - v - 1.0f / 16);
+
 }
