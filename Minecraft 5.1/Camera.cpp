@@ -91,13 +91,45 @@ void Camera::Inputs(GLFWwindow* window)
 		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); // fait réapparaître le curseur
 		leftClic = true;
 	}
+
+	if (glfwGetKey(window, GLFW_KEY_F11) == GLFW_PRESS)
+	{
+		if (!keyF11) // touche pressée pour la première fois
+		{
+			keyF11 = true;
+
+			if (pleinEcran)
+			{
+				// revenir en fenêtre
+				glfwSetWindowMonitor(window, NULL, 100, 100, 800, 800, GLFW_DONT_CARE);
+				glViewport(0, 0, 800, 800);
+				width = 800;
+				height = 800;
+				pleinEcran = false;
+			}
+			else
+			{
+				// passer en plein écran
+				GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+				const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+				glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+				glViewport(0, 0, mode->width, mode->height);
+				width = mode->width;
+				height = mode->height;
+				pleinEcran = true;
+			}
+		}
+	}
+	else
+	{
+		keyF11 = false; // la touche a été relâchée
+	}
 }
 
 void Camera::f10(GLFWwindow* window, Shader& shader, const char* uniform)
 {
 	if (glfwGetKey(window, GLFW_KEY_F10) == GLFW_PRESS)
 	{
-		glGetUniformLocation(shader.ID, uniform);
 		if (keyF10)
 		{
 			keyF10 = false;
@@ -112,39 +144,3 @@ void Camera::f10(GLFWwindow* window, Shader& shader, const char* uniform)
 		keyF10 = true;
 	}
 }
-
-void Camera::f11(GLFWwindow* window)
-	{
-		if (glfwGetKey(window, GLFW_KEY_F11) == GLFW_PRESS)
-		{
-			if (!keyF11) // touche pressée pour la première fois
-			{
-				keyF11 = true;
-
-				if (pleinEcran)
-				{
-					// revenir en fenêtre
-					glfwSetWindowMonitor(window, NULL, 100, 100, 800, 800, GLFW_DONT_CARE);
-					glViewport(0, 0, 800, 800);
-					width = 800;
-					height = 800;
-					pleinEcran = false;
-				}
-				else
-				{
-					// passer en plein écran
-					GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-					const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-					glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-					glViewport(0, 0, mode->width, mode->height);
-					width = mode->width;
-					height = mode->height;
-					pleinEcran = true;
-				}
-			}
-		}
-		else
-		{
-			keyF11 = false; // la touche a été relâchée
-		}
-	}

@@ -20,6 +20,7 @@
 #include "EBO.h"
 #include "Texture.h"
 #include "Camera.h"
+#include "Chunk.h"
 
 
 // ======================================== //
@@ -31,63 +32,6 @@ using namespace std;
 // ============ Les variables ============= //
 int width = 800, height = 800;
 
-GLfloat vertices[] =
-{
-	// Face avant
-	-0.5f, -0.5f, -0.5f,   1.0f / 16 * 0,  1.0f / 16 * 15,
-	-0.5f,  0.5f, -0.5f,   1.0f / 16 * 0,  1.0f / 16 * 16,
-	 0.5f,  0.5f, -0.5f,   1.0f / 16 * 1,  1.0f / 16 * 16,
-	 0.5f, -0.5f, -0.5f,   1.0f / 16 * 1,  1.0f / 16 * 15,
-
-	 // Face droite
-	 0.5f, -0.5f, -0.5f,   1.0f / 16 * 0,  1.0f / 16 * 15,
-	 0.5f,  0.5f, -0.5f,   1.0f / 16 * 0,  1.0f / 16 * 16,
-	 0.5f,  0.5f,  0.5f,   1.0f / 16 * 1,  1.0f / 16 * 16,
-	 0.5f, -0.5f,  0.5f,   1.0f / 16 * 1,  1.0f / 16 * 15,
-
-	 // Face arrière
-	  0.5f, -0.5f,  0.5f,   1.0f / 16 * 0,  1.0f / 16 * 15,
-	  0.5f,  0.5f,  0.5f,   1.0f / 16 * 0,  1.0f / 16 * 16,
-	 -0.5f,  0.5f,  0.5f,   1.0f / 16 * 1,  1.0f / 16 * 16,
-	 -0.5f, -0.5f,  0.5f,   1.0f / 16 * 1,  1.0f / 16 * 15,
-
-	 // Face gauche
-	-0.5f, -0.5f,  0.5f,   1.0f / 16 * 0,  1.0f / 16 * 15,
-	-0.5f,  0.5f,  0.5f,   1.0f / 16 * 0,  1.0f / 16 * 16,
-	-0.5f,  0.5f, -0.5f,   1.0f / 16 * 1,  1.0f / 16 * 16,
-	-0.5f, -0.5f, -0.5f,   1.0f / 16 * 1,  1.0f / 16 * 15,
-
-	  // Face du haut
-	-0.5f,  0.5f, -0.5f,   1.0f / 16 * 0,  1.0f / 16 * 15,
-	-0.5f,  0.5f,  0.5f,   1.0f / 16 * 0,  1.0f / 16 * 16,
-	 0.5f,  0.5f,  0.5f,   1.0f / 16 * 1,  1.0f / 16 * 16,
-	 0.5f,  0.5f, -0.5f,   1.0f / 16 * 1,  1.0f / 16 * 15,
-
-	  // Face du bas
-	-0.5f, -0.5f,  0.5f,   1.0f / 16 * 0,  1.0f / 16 * 15,
-	 0.5f, -0.5f,  0.5f,   1.0f / 16 * 0,  1.0f / 16 * 16,
-	 0.5f, -0.5f, -0.5f,   1.0f / 16 * 1,  1.0f / 16 * 16,
-	-0.5f, -0.5f, -0.5f,   1.0f / 16 * 1,  1.0f / 16 * 15
-};
-
-//0, 256, 0,
-//16, 256, 0,
-//16, 0, 0,
-//0, 0, 0,
-//0, 256, 256,
-//16, 256, 256,
-//16, 0, 16,
-//0, 0, 16
-
-GLuint indices[] =
-{
-	0, 1, 2,   2, 3, 0,       // avant
-	4, 5, 6,   6, 7, 4,       // droite
-	8, 9,10,  10,11, 8,       // arrière
-   12,13,14,  14,15,12,       // gauche
-   16,17,18,  18,19,16,       // haut
-   20,21,22,  22,23,20        // bas
-};
 
 
 // ============ Les fonctions ============= //
@@ -139,23 +83,9 @@ int main() {
 	gladLoadGL(); // chargement des fonctions de glad
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) { Erreurs(2); return -1; } // vérifi que la librairie a bien tout chargée
 
-	Shader shaderProgram("default.vert", "default.frag"); // génere l'objet shader en utilisant le default.vert et le default.frag
+	Chunk chunk;
 
-	VAO VAO1; // génere le VAO
-	VAO1.Bind(); // et le lie
-
-	VBO VBO1(vertices, sizeof(vertices)); // génere le VBO et le lie aux vertices
-	EBO EBO1(indices, sizeof(indices)); // génere le EBO et le lie aux indices
-
-	VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 5 * sizeof(float), (void*)0); // lie le VBO au VAO
-	VAO1.LinkAttrib(VBO1, 1, 2, GL_FLOAT, 5 * sizeof(float), (void*)(3 * sizeof(float))); // si il y a des couleurs par points
-	// délie tout les objets pour eviter une erreur de modification
-	VAO1.Unbind();
-	VBO1.Unbind();
-	EBO1.Unbind();
-
-	Texture bitmap("bitmap.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE); // création de l'objet bitmap
-	bitmap.texUnit(shaderProgram, "tex0", 0);
+	chunk.Generation();
 
 	glEnable(GL_DEPTH_TEST); // permet de dire à OpenGL de tenir compte de la perspective lors de l'affichage des textures
 
@@ -169,27 +99,15 @@ int main() {
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f); // efface le tampon et lui donne une couleur définie
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // applique le changement précédent
 
-		shaderProgram.Activate(); // dit à OpenGL quel shaderProgram utiliser
-
-		camera.f10(window, shaderProgram, "verticeMode"); // permet le mode vertice
-		camera.f11(window); // permet le mode plein écran
 		camera.Inputs(window);
-		camera.Matrix(45.0f, 0.1f, 100.0f, shaderProgram, "camMatrix"); // créé et envoie les matrices aux shaders
-
-		bitmap.Bind(); // liage de la texture
-		VAO1.Bind(); // lie le VAO pour que OpenGL sache l'utiliser
-
-		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(int), GL_UNSIGNED_INT, 0); // dessine les éléments (type de forme, nombre d'éléments, type des indices, index des indices)
+		
+		chunk.BindBloc(camera, window);
 
 		glfwSwapBuffers(window); // échange les buffers
 	}
 
 	// destruction des objets créés
-	VAO1.Delete();
-	VBO1.Delete();
-	EBO1.Delete();
-	bitmap.Delete();
-	shaderProgram.Delete();
+	chunk.Delete();
 
 	glfwDestroyWindow(window); // Fin de la fenêtre
 	glfwTerminate(); // Fin de l'utilisation de glfw

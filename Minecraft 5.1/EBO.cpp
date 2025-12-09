@@ -1,7 +1,7 @@
 #include"EBO.h"
 
 // Création de l'EBO (Element Buffer Object) un tampon d'éléments
-EBO::EBO(GLuint* indices, GLsizeiptr size)
+EBO::EBO(std::vector<GLuint>* indices, GLsizeiptr size)
 {
 	glGenBuffers(1, &ID); // (nombre d'objet, référence) génère un tampon d'objets et le stock dans la variable EBO
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ID); // liaison de l'objet afin qu'il devienne l'objet courant
