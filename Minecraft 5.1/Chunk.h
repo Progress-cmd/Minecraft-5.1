@@ -10,17 +10,17 @@
 #include "shaderClass.h"
 
 #include <vector>
+#include <array>
 
 class Chunk
 {
 protected:
 	struct Block { uint8_t type; };
-	struct FaceData { glm::vec3 verts[4]; glm::vec2 uvs[4]; };
+	struct FaceData { std::array<glm::vec3, 4> verts; std::array<glm::vec2, 4> uvs; };
 
 public:
 	// Variables concernant les blocs
 	Texture bitmap;
-
 	VAO VAOBloc;
 	Shader shaderProgramBloc;
 	VBO VBOBloc;
@@ -31,6 +31,7 @@ public:
 	static const int CHUNK_Z = 16;
 	Block blocks[CHUNK_X * CHUNK_Y * CHUNK_Z];
 
+	std::array<glm::vec2, 4> uvArray;
 
 	FaceData FACE_POS_X = {
 	{
@@ -145,6 +146,7 @@ public:
 	void Generation();
 	bool isAir(int x, int y, int z);
 	void addFace(std::vector<GLfloat>& v, std::vector<GLuint>& i, const FaceData& face, int x, int y, int z);
+	void typeBloc(int id);
 };
 
 #endif CHUNK_H

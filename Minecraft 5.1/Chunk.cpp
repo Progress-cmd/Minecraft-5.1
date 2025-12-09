@@ -43,6 +43,13 @@ void Chunk::Generation()
 				uint8_t b = blocks[x + 16 * (z + 16 * y)].type;
 				if (b == 0) continue;
 
+				typeBloc(0);
+				FACE_POS_X.uvs = uvArray;
+				FACE_NEG_X.uvs = uvArray;
+				FACE_POS_Y.uvs = uvArray;
+				FACE_NEG_Y.uvs = uvArray;
+				FACE_POS_Z.uvs = uvArray;
+				FACE_NEG_Z.uvs = uvArray;
 				// Pour chaque face : check le voisin
 				if (!isAir(x + 1, y, z)) addFace(vertices, indices, FACE_POS_X, x, y, z);
 				if (!isAir(x - 1, y, z)) addFace(vertices, indices, FACE_NEG_X, x, y, z);
@@ -131,4 +138,12 @@ void Chunk::Delete()
 	EBOBloc.Delete();
 	shaderProgramBloc.Delete();
 	bitmap.Delete();
+}
+
+void Chunk::typeBloc(int id)
+{
+	uvArray[0] = glm::vec2(1.0f / 16 * id + 0,   1.0f / 16 * (15 - id));
+	uvArray[1] = glm::vec2(1.0f / 16 * id + 0,   1.0f / 16 * (16 - id));
+	uvArray[2] = glm::vec2(1.0f / 16 * (id + 1), 1.0f / 16 * (16 - id));
+	uvArray[3] = glm::vec2(1.0f / 16 * (id + 1), 1.0f / 16 * (15 - id));
 }
