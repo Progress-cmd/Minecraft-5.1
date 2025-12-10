@@ -13,10 +13,15 @@ Chunk::Chunk()
 		{
 			for (int z = 0; z < CHUNK_Z; z++)
 			{
-				blocks[x + CHUNK_X * (z + CHUNK_Z * y)].type = 1;
+				blocks[x + CHUNK_X * (z + CHUNK_Z * y)].type = rand()%4;
 			}
 		}
 	}
+
+	uvArray[0] = glm::vec2(0.0f, 0.9375f);
+	uvArray[1] = glm::vec2(0.0f, 1.0f);
+	uvArray[2] = glm::vec2(0.0625f, 1.0f);
+	uvArray[3] = glm::vec2(0.0625f, 0.9375f);
 
 	// Initialisation du VAO et association de la texture
 	VAOBloc.Bind();
@@ -32,24 +37,27 @@ Chunk::Chunk()
 	faces[5] = FACE_NEG_Z;
 }
 
-void Chunk::Generation()
+void Chunk::Generation(int xChunk, int yChunk, int texIdUp, int texIdDown, int texIdSides)
 {
-	for (int x = 0; x < 16; x++)
+	for (int x = xChunk * 16; x < xChunk * 16 + 16; x++)
 	{
 		for (int y = 0; y < 128; y++)
 		{
-			for (int z = 0; z < 16; z++)
+			for (int z = yChunk * 16; z < yChunk * 16 + 16; z++)
 			{
 				uint8_t b = blocks[x + 16 * (z + 16 * y)].type;
 				if (b == 0) continue;
 
-				typeBloc(3);
+				int tempType = blocks[x + CHUNK_X * (z + CHUNK_Z * y)].type;
+				typeBloc(blockTypes[tempType][2]);
 				FACE_POS_X.uvs = uvArray;
 				FACE_NEG_X.uvs = uvArray;
-				FACE_POS_Y.uvs = uvArray;
-				FACE_NEG_Y.uvs = uvArray;
 				FACE_POS_Z.uvs = uvArray;
 				FACE_NEG_Z.uvs = uvArray;
+				typeBloc(blockTypes[tempType][0]);
+				FACE_POS_Y.uvs = uvArray;
+				typeBloc(blockTypes[tempType][1]);
+				FACE_NEG_Y.uvs = uvArray;
 				// Pour chaque face : check le voisin
 				if (!isAir(x + 1, y, z)) addFace(vertices, indices, FACE_POS_X, x, y, z);
 				if (!isAir(x - 1, y, z)) addFace(vertices, indices, FACE_NEG_X, x, y, z);
@@ -94,7 +102,8 @@ bool Chunk::isAir(int x, int y, int z)
 		y >= 0 && y < 128 &&
 		z >= 0 && z < 16)
 	{
-		if (blocks[x + 16 * (z + 16 * y)].type == 0) { return true; }
+		if (blocks[x + 16 * (z + 16 * y)].type != 0) { return true; }
+		else { return false; }
 	}
 	else { return false; }
 }
@@ -148,9 +157,8 @@ void Chunk::typeBloc(int id)
 	float u = col / 16.0f;
 	float v = row / 16.0f;
 
-	uvArray[0] = glm::vec2(u, 1.0f - v - 1.0f / 16);
+	uvArray[0] = glm::vec2(u, 1.0f - v - 0.0625);
 	uvArray[1] = glm::vec2(u, 1.0f - v);
-	uvArray[2] = glm::vec2(u + 1.0f / 16, 1.0f - v);
-	uvArray[3] = glm::vec2(u + 1.0f / 16, 1.0f - v - 1.0f / 16);
-
+	uvArray[2] = glm::vec2(u + 0.0625, 1.0f - v);
+	uvArray[3] = glm::vec2(u + 0.0625, 1.0f - v - 0.0625);
 }

@@ -11,12 +11,20 @@
 
 #include <vector>
 #include <array>
+#include <map>
+#include <cstdlib>
 
 class Chunk
 {
 protected:
 	struct Block { uint8_t type; };
 	struct FaceData { std::array<glm::vec3, 4> verts; std::array<glm::vec2, 4> uvs; };
+	std::map<int, std::array<int, 3>> blockTypes = { // Up, Down, Sides
+	{1, {0, 0, 0}},    // Dirt
+	{2, {1, 0, 2}},    // Grass
+	{3, {3, 3, 3}},    // Stone
+	{4, {4, 4, 4}}     // Wood
+	};
 
 public:
 	// Variables concernant les blocs
@@ -143,7 +151,7 @@ public:
 
 
 	// génération du chunk
-	void Generation();
+	void Generation(int xChunk, int yChunk, int texIdUp, int texIdDown, int texIdSides);
 	bool isAir(int x, int y, int z);
 	void addFace(std::vector<GLfloat>& v, std::vector<GLuint>& i, const FaceData& face, int x, int y, int z);
 	void typeBloc(int id);

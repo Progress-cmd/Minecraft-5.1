@@ -84,12 +84,29 @@ int main() {
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) { Erreurs(2); return -1; } // vérifi que la librairie a bien tout chargée
 
 	Chunk chunk;
+	//Chunk chunk1;
+	//Chunk chunk2;
+	//Chunk chunk3;
+	//Chunk chunk4;
+	//Chunk chunk5;
+	//Chunk chunk6;
+	//Chunk chunk7;
+	//Chunk chunk8;
 
-	chunk.Generation();
+	chunk.Generation(0, 0, 1, 0, 2);
+	//chunk1.Generation(1, 0);
+	//chunk2.Generation(0, 1);
+	//chunk2.Generation(-1, 0);
+	//chunk3.Generation(0, -1);
+	//chunk4.Generation(1, 1);
+	//chunk5.Generation(1, -1);
+	//chunk6.Generation(-1, 1);
+	//chunk7.Generation(-1, -1);
+	//chunk8.Generation(1, -1);
 
 	glEnable(GL_DEPTH_TEST); // permet de dire à OpenGL de tenir compte de la perspective lors de l'affichage des textures
 
-	Camera camera(width, height, glm::vec3(0.0f, 0.0f, 2.0f)); // création de l'objet caméra
+	Camera camera(width, height, glm::vec3(0.0f, 130.0f, 2.0f)); // création de l'objet caméra
 
 	// ========= La boucle principale ========= //
 	while (!glfwWindowShouldClose(window))
@@ -102,6 +119,15 @@ int main() {
 		camera.Inputs(window);
 		
 		chunk.BindBloc(camera, window);
+		//chunk1.BindBloc(camera, window);
+		//chunk2.BindBloc(camera, window);
+		//chunk2.BindBloc(camera, window);
+		//chunk3.BindBloc(camera, window);
+		//chunk4.BindBloc(camera, window);
+		//chunk5.BindBloc(camera, window);
+		//chunk6.BindBloc(camera, window);
+		//chunk7.BindBloc(camera, window);
+		//chunk8.BindBloc(camera, window);
 
 		glfwSwapBuffers(window); // échange les buffers
 	}
