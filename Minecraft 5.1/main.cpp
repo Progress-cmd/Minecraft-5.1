@@ -23,6 +23,7 @@
 #include "Chunk.h"
 
 
+
 // ======================================== //
 // (((((((((((( LE CODE SOURCE )))))))))))) //
 // ======================================== //
@@ -31,8 +32,6 @@ using namespace std;
 
 // ============ Les variables ============= //
 int width = 800, height = 800;
-
-
 
 // ============ Les fonctions ============= //
 void Erreurs(int value)
@@ -48,15 +47,6 @@ void Erreurs(int value)
 	}
 }
 
-void GLFWInit()
-{
-	glfwInit(); // Initialisation de GLFW
-
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4); // donne la version d'OpenGL
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6); // c'est 4.6 sa version
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); //la version core contient toute les fonctions modernes (!= compatibility)
-}
-
 void escape(GLFWwindow* window, int key, int action)
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
@@ -68,10 +58,13 @@ void sortieClavier(GLFWwindow* window, int key, int scancode, int action, int mo
 }
 
 
-
 // =========== La fonction main =========== //
 int main() {
-	GLFWInit();
+	glfwInit(); // Initialisation de GLFW
+
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4); // donne la version d'OpenGL
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6); // c'est 4.6 sa version
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); //la version core contient toute les fonctions modernes (!= compatibility)
 	if (!glfwInit()) { Erreurs(0); return -1; } // vérifi que la librairie s'est bien initialisée
 
 	GLFWwindow* window = glfwCreateWindow(800, 800, "Minecraft", NULL, NULL); // création de la fenêtre
@@ -83,26 +76,27 @@ int main() {
 	gladLoadGL(); // chargement des fonctions de glad
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) { Erreurs(2); return -1; } // vérifi que la librairie a bien tout chargée
 
-	Chunk chunk(0, 0);
-	Chunk chunk1(1, 0);
-	Chunk chunk2(0, 1);
-	Chunk chunk3(-1, 0);
-	Chunk chunk4(0, -1);
-	Chunk chunk5(1, 1);
-	Chunk chunk6(-1, 1);
-	Chunk chunk7(-1, -1);
-	Chunk chunk8(1, -1);
+	// Utiliser des pointeurs pour allouer dynamiquement les chunks
+	Chunk* chunk = new Chunk(0, 0);
+	Chunk* chunk1 = new Chunk(1, 0);
+	Chunk* chunk2 = new Chunk(0, 1);
+	Chunk* chunk3 = new Chunk(-1, 0);
+	Chunk* chunk4 = new Chunk(0, -1);
+	Chunk* chunk5 = new Chunk(1, 1);
+	Chunk* chunk6 = new Chunk(-1, 1);
+	Chunk* chunk7 = new Chunk(-1, -1);
+	Chunk* chunk8 = new Chunk(1, -1);
 
-	chunk.Generation();
-	chunk1.Generation();
-	chunk2.Generation();
-	chunk2.Generation();
-	chunk3.Generation();
-	chunk4.Generation();
-	chunk5.Generation();
-	chunk6.Generation();
-	chunk7.Generation();
-	chunk8.Generation();
+	chunk->Generation();
+	chunk1->Generation();
+	chunk2->Generation();
+	chunk2->Generation();
+	chunk3->Generation();
+	chunk4->Generation();
+	chunk5->Generation();
+	chunk6->Generation();
+	chunk7->Generation();
+	chunk8->Generation();
 
 	glEnable(GL_DEPTH_TEST); // permet de dire à OpenGL de tenir compte de la perspective lors de l'affichage des textures
 
@@ -118,22 +112,40 @@ int main() {
 
 		camera.Inputs(window);
 		
-		chunk.BindBloc(camera, window);
-		chunk1.BindBloc(camera, window);
-		chunk2.BindBloc(camera, window);
-		chunk2.BindBloc(camera, window);
-		chunk3.BindBloc(camera, window);
-		chunk4.BindBloc(camera, window);
-		chunk5.BindBloc(camera, window);
-		chunk6.BindBloc(camera, window);
-		chunk7.BindBloc(camera, window);
-		chunk8.BindBloc(camera, window);
+		chunk->BindBloc(camera, window);
+		chunk1->BindBloc(camera, window);
+		chunk2->BindBloc(camera, window);
+		chunk2->BindBloc(camera, window);
+		chunk3->BindBloc(camera, window);
+		chunk4->BindBloc(camera, window);
+		chunk5->BindBloc(camera, window);
+		chunk6->BindBloc(camera, window);
+		chunk7->BindBloc(camera, window);
+		chunk8->BindBloc(camera, window);
 
 		glfwSwapBuffers(window); // échange les buffers
 	}
 
 	// destruction des objets créés
-	chunk.Delete();
+	chunk->Delete();
+	chunk1->Delete();
+	chunk2->Delete();
+	chunk3->Delete();
+	chunk4->Delete();
+	chunk5->Delete();
+	chunk6->Delete();
+	chunk7->Delete();
+	chunk8->Delete();
+
+	delete chunk;
+	delete chunk1;
+	delete chunk2;
+	delete chunk3;
+	delete chunk4;
+	delete chunk5;
+	delete chunk6;
+	delete chunk7;
+	delete chunk8;
 
 	glfwDestroyWindow(window); // Fin de la fenêtre
 	glfwTerminate(); // Fin de l'utilisation de glfw
