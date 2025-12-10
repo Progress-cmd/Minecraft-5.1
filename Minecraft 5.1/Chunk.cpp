@@ -1,10 +1,12 @@
 #include "Chunk.h"
 
-Chunk::Chunk()
-	: shaderProgramBloc("default.vert", "default.frag"),
+Chunk::Chunk(const int xChunk, const int yChunk) :
+	shaderProgramBloc("default.vert", "default.frag"),
 	VBOBloc(&vertices, vertices.size()),
 	EBOBloc(&indices, indices.size()),
-	bitmap("bitmap.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE)
+	bitmap("bitmap.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE),
+	m_xChunk(xChunk),
+	m_yChunk(yChunk)
 {
 	// Initialise tous les blocs à type = 1
 	for (int x = 0; x < CHUNK_X; x++)
@@ -13,11 +15,12 @@ Chunk::Chunk()
 		{
 			for (int z = 0; z < CHUNK_Z; z++)
 			{
-				blocks[x + CHUNK_X * (z + CHUNK_Z * y)].type = rand()%4;
+				blocks[x + CHUNK_X * (z + CHUNK_Z * y)].type = 1;
 			}
 		}
 	}
 
+	// Initialisation des coordonnées de la texture de base (UV)
 	uvArray[0] = glm::vec2(0.0f, 0.9375f);
 	uvArray[1] = glm::vec2(0.0f, 1.0f);
 	uvArray[2] = glm::vec2(0.0625f, 1.0f);
@@ -37,13 +40,13 @@ Chunk::Chunk()
 	faces[5] = FACE_NEG_Z;
 }
 
-void Chunk::Generation(int xChunk, int yChunk, int texIdUp, int texIdDown, int texIdSides)
+void Chunk::Generation()
 {
-	for (int x = xChunk * 16; x < xChunk * 16 + 16; x++)
+	for (int x = m_xChunk * 16; x < m_xChunk * 16 + 16; x++)
 	{
 		for (int y = 0; y < 128; y++)
 		{
-			for (int z = yChunk * 16; z < yChunk * 16 + 16; z++)
+			for (int z = m_yChunk * 16; z < m_yChunk * 16 + 16; z++)
 			{
 				uint8_t b = blocks[x + 16 * (z + 16 * y)].type;
 				if (b == 0) continue;
@@ -59,34 +62,28 @@ void Chunk::Generation(int xChunk, int yChunk, int texIdUp, int texIdDown, int t
 				typeBloc(blockTypes[tempType][1]);
 				FACE_NEG_Y.uvs = uvArray;
 				// Pour chaque face : check le voisin
-				if (!isAir(x + 1, y, z)) addFace(vertices, indices, FACE_POS_X, x, y, z);
-				if (!isAir(x - 1, y, z)) addFace(vertices, indices, FACE_NEG_X, x, y, z);
-				if (!isAir(x, y + 1, z)) addFace(vertices, indices, FACE_POS_Y, x, y, z);
-				if (!isAir(x, y - 1, z)) addFace(vertices, indices, FACE_NEG_Y, x, y, z);
-				if (!isAir(x, y, z + 1)) addFace(vertices, indices, FACE_POS_Z, x, y, z);
-				if (!isAir(x, y, z - 1)) addFace(vertices, indices, FACE_NEG_Z, x, y, z);
+				if (isAir(x + 1, y, z)) addFace(vertices, indices, FACE_POS_X, x, y, z);
+				if (isAir(x - 1, y, z)) addFace(vertices, indices, FACE_NEG_X, x, y, z);
+				if (isAir(x, y + 1, z)) addFace(vertices, indices, FACE_POS_Y, x, y, z);
+				if (isAir(x, y - 1, z)) addFace(vertices, indices, FACE_NEG_Y, x, y, z);
+				if (isAir(x, y, z + 1)) addFace(vertices, indices, FACE_POS_Z, x, y, z);
+				if (isAir(x, y, z - 1)) addFace(vertices, indices, FACE_NEG_Z, x, y, z);
 			}
 		}
 	}
 
-	VAOBloc.Bind(); // et le lie
+	// liage du VAO, VBO, et EBO
+	VAOBloc.Bind();
 	VBOBloc.Bind();
 	EBOBloc.Bind();
 
 	// après avoir bindé VBOBloc et EBOBloc
 	glBindBuffer(GL_ARRAY_BUFFER, VBOBloc.ID); // adapte si ton VBO expose un membre ID
-	glBufferData(GL_ARRAY_BUFFER,
-		vertices.size() * sizeof(GLfloat),
-		vertices.empty() ? nullptr : vertices.data(),
-		GL_STATIC_DRAW);
-
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), vertices.empty() ? nullptr : vertices.data(), GL_STATIC_DRAW);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBOBloc.ID); // même remarque
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-		indices.size() * sizeof(GLuint),
-		indices.empty() ? nullptr : indices.data(),
-		GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.empty() ? nullptr : indices.data(), GL_STATIC_DRAW);
 
-
+	// configuration des attributs
 	VAOBloc.LinkAttrib(VBOBloc, 0, 3, GL_FLOAT, 5 * sizeof(float), (void*)0); // lie le VBO au VAO
 	VAOBloc.LinkAttrib(VBOBloc, 1, 2, GL_FLOAT, 5 * sizeof(float), (void*)(3 * sizeof(float))); // les coordonnées de la texture
 
@@ -96,16 +93,29 @@ void Chunk::Generation(int xChunk, int yChunk, int texIdUp, int texIdDown, int t
 	EBOBloc.Unbind();
 }
 
+void Chunk::typeBloc(int id)
+{
+	int col = id % 16;
+	int row = id / 16;
+
+	float u = col / 16.0f;
+	float v = row / 16.0f;
+
+	uvArray[0] = glm::vec2(u, 1.0f - v - 0.0625);
+	uvArray[1] = glm::vec2(u, 1.0f - v);
+	uvArray[2] = glm::vec2(u + 0.0625, 1.0f - v);
+	uvArray[3] = glm::vec2(u + 0.0625, 1.0f - v - 0.0625);
+}
+
 bool Chunk::isAir(int x, int y, int z)
 {
-	if (x >= 0 && x < 16 &&
-		y >= 0 && y < 128 &&
-		z >= 0 && z < 16)
-	{
-		if (blocks[x + 16 * (z + 16 * y)].type != 0) { return true; }
-		else { return false; }
-	}
-	else { return false; }
+	// check limites du chunk
+	if (x < m_xChunk * 16 || x >= m_xChunk * 16 + 16) return true;
+	if (y < 0 || y >= 128) return true;
+	if (z < m_yChunk * 16 || z >= m_yChunk * 16 + 16) return true;
+
+	int idx = x + 16 * (z + 16 * y);
+	return blocks[idx].type == 0;
 }
 
 void Chunk::addFace(std::vector<GLfloat>& v, std::vector<GLuint>& i, const FaceData& face, int x, int y, int z)
@@ -147,18 +157,4 @@ void Chunk::Delete()
 	EBOBloc.Delete();
 	shaderProgramBloc.Delete();
 	bitmap.Delete();
-}
-
-void Chunk::typeBloc(int id)
-{
-	int col = id % 16;
-	int row = id / 16;
-
-	float u = col / 16.0f;
-	float v = row / 16.0f;
-
-	uvArray[0] = glm::vec2(u, 1.0f - v - 0.0625);
-	uvArray[1] = glm::vec2(u, 1.0f - v);
-	uvArray[2] = glm::vec2(u + 0.0625, 1.0f - v);
-	uvArray[3] = glm::vec2(u + 0.0625, 1.0f - v - 0.0625);
 }

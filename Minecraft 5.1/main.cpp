@@ -83,26 +83,26 @@ int main() {
 	gladLoadGL(); // chargement des fonctions de glad
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) { Erreurs(2); return -1; } // vérifi que la librairie a bien tout chargée
 
-	Chunk chunk;
-	//Chunk chunk1;
-	//Chunk chunk2;
-	//Chunk chunk3;
-	//Chunk chunk4;
-	//Chunk chunk5;
-	//Chunk chunk6;
-	//Chunk chunk7;
-	//Chunk chunk8;
+	Chunk chunk(0, 0);
+	Chunk chunk1(1, 0);
+	Chunk chunk2(0, 1);
+	Chunk chunk3(-1, 0);
+	Chunk chunk4(0, -1);
+	Chunk chunk5(1, 1);
+	Chunk chunk6(-1, 1);
+	Chunk chunk7(-1, -1);
+	Chunk chunk8(1, -1);
 
-	chunk.Generation(0, 0, 1, 0, 2);
-	//chunk1.Generation(1, 0);
-	//chunk2.Generation(0, 1);
-	//chunk2.Generation(-1, 0);
-	//chunk3.Generation(0, -1);
-	//chunk4.Generation(1, 1);
-	//chunk5.Generation(1, -1);
-	//chunk6.Generation(-1, 1);
-	//chunk7.Generation(-1, -1);
-	//chunk8.Generation(1, -1);
+	chunk.Generation();
+	chunk1.Generation();
+	chunk2.Generation();
+	chunk2.Generation();
+	chunk3.Generation();
+	chunk4.Generation();
+	chunk5.Generation();
+	chunk6.Generation();
+	chunk7.Generation();
+	chunk8.Generation();
 
 	glEnable(GL_DEPTH_TEST); // permet de dire à OpenGL de tenir compte de la perspective lors de l'affichage des textures
 
@@ -119,15 +119,15 @@ int main() {
 		camera.Inputs(window);
 		
 		chunk.BindBloc(camera, window);
-		//chunk1.BindBloc(camera, window);
-		//chunk2.BindBloc(camera, window);
-		//chunk2.BindBloc(camera, window);
-		//chunk3.BindBloc(camera, window);
-		//chunk4.BindBloc(camera, window);
-		//chunk5.BindBloc(camera, window);
-		//chunk6.BindBloc(camera, window);
-		//chunk7.BindBloc(camera, window);
-		//chunk8.BindBloc(camera, window);
+		chunk1.BindBloc(camera, window);
+		chunk2.BindBloc(camera, window);
+		chunk2.BindBloc(camera, window);
+		chunk3.BindBloc(camera, window);
+		chunk4.BindBloc(camera, window);
+		chunk5.BindBloc(camera, window);
+		chunk6.BindBloc(camera, window);
+		chunk7.BindBloc(camera, window);
+		chunk8.BindBloc(camera, window);
 
 		glfwSwapBuffers(window); // échange les buffers
 	}
