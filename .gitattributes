@@ -63,4 +63,3 @@
 #*.RTF   diff=astextplain
 libs linguist-vendored
 libs/* linguist-vendored
-
