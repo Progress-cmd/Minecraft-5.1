@@ -160,7 +160,7 @@ protected:
 
 public:
 	Chunk(const int xChunk, const int yChunk);
-	void BindBloc(Camera& camera, GLFWwindow* window);
+	void BindBloc(Camera& camera, GLFWwindow* window, bool verticeMode);
 	void Delete();
 
 	// génération du chunk

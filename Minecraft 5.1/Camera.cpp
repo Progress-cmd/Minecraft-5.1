@@ -126,21 +126,7 @@ void Camera::Inputs(GLFWwindow* window)
 	}
 }
 
-void Camera::f10(GLFWwindow* window, Shader& shader, const char* uniform)
+glm::vec3 Camera::getPosition()
 {
-	if (glfwGetKey(window, GLFW_KEY_F10) == GLFW_PRESS)
-	{
-		if (keyF10)
-		{
-			keyF10 = false;
-		}
-		glUniform1i(glGetUniformLocation(shader.ID, uniform), true);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	}
-	else if (glfwGetKey(window, GLFW_KEY_F10) == GLFW_RELEASE)
-	{
-		glUniform1i(glGetUniformLocation(shader.ID, uniform), false);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		keyF10 = true;
-	}
+	return Position;
 }

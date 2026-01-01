@@ -140,14 +140,21 @@ void Chunk::addFace(std::vector<GLfloat>& v, std::vector<GLuint>& i, const FaceD
 }
 
 
-void Chunk::BindBloc(Camera& camera, GLFWwindow* window)
+void Chunk::BindBloc(Camera& camera, GLFWwindow* window, bool verticeMode)
 {
 	shaderProgramBloc.Activate(); // dit à OpenGL quel shaderProgram utiliser
 	bitmap.Bind();
-	camera.f10(window, shaderProgramBloc, "verticeMode"); // permet le mode vertice
 	camera.Matrix(45.0f, 0.1f, 100.0f, shaderProgramBloc, "camMatrix"); // créé et envoie les matrices aux shaders
 	VAOBloc.Bind(); // lie le VAO pour que OpenGL sache l'utiliser
 	glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0); // dessine les éléments (type de forme, nombre d'éléments, type des indices, index des indices)
+	if (verticeMode)
+	{
+		glUniform1i(glGetUniformLocation(shaderProgramBloc.ID, "verticeMode"), true);
+	}
+	else
+	{
+		glUniform1i(glGetUniformLocation(shaderProgramBloc.ID, "verticeMode"), false);
+	}
 }
 
 void Chunk::Delete()

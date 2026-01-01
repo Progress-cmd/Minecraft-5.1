@@ -11,6 +11,7 @@
 #include <gtc/matrix_transform.hpp>
 #include <gtc/type_ptr.hpp>
 #include <stb_image.h> // Utilisation des textures
+#include <chrono>
 
 
 // ========= Les fichiers sources ========= //
@@ -21,6 +22,8 @@
 #include "Texture.h"
 #include "Camera.h"
 #include "Chunk.h"
+#include "Generation.h"
+#include "Inputs.h"
 
 
 
@@ -29,9 +32,16 @@
 // ======================================== //
 
 using namespace std;
+using namespace std::chrono;
 
 // ============ Les variables ============= //
 int width = 800, height = 800;
+
+int frames = 0;
+double fps = 0.0;
+
+auto start = high_resolution_clock::now();
+
 
 // ============ Les fonctions ============= //
 void Erreurs(int value)
@@ -67,7 +77,7 @@ int main() {
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); //la version core contient toute les fonctions modernes (!= compatibility)
 	if (!glfwInit()) { Erreurs(0); return -1; } // vérifi que la librairie s'est bien initialisée
 
-	GLFWwindow* window = glfwCreateWindow(800, 800, "Minecraft", NULL, NULL); // création de la fenêtre
+	GLFWwindow* window = glfwCreateWindow(width, height, "Minecraft", NULL, NULL); // création de la fenêtre
 	if (window == NULL) { Erreurs(1); glfwTerminate(); return -1; } // vérifi que la window est bien créée
 	glfwMakeContextCurrent(window); // dit à glfw d'utiliser la fenêtre window
 
@@ -76,31 +86,14 @@ int main() {
 	gladLoadGL(); // chargement des fonctions de glad
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) { Erreurs(2); return -1; } // vérifi que la librairie a bien tout chargée
 
-	// Utiliser des pointeurs pour allouer dynamiquement les chunks
-	Chunk* chunk = new Chunk(0, 0);
-	Chunk* chunk1 = new Chunk(1, 0);
-	Chunk* chunk2 = new Chunk(0, 1);
-	Chunk* chunk3 = new Chunk(-1, 0);
-	Chunk* chunk4 = new Chunk(0, -1);
-	Chunk* chunk5 = new Chunk(1, 1);
-	Chunk* chunk6 = new Chunk(-1, 1);
-	Chunk* chunk7 = new Chunk(-1, -1);
-	Chunk* chunk8 = new Chunk(1, -1);
+	Inputs inputsInit;
+	Generation generationInit;
 
-	chunk->Generation();
-	chunk1->Generation();
-	chunk2->Generation();
-	chunk2->Generation();
-	chunk3->Generation();
-	chunk4->Generation();
-	chunk5->Generation();
-	chunk6->Generation();
-	chunk7->Generation();
-	chunk8->Generation();
+	generationInit.ChunkGeneration();
 
 	glEnable(GL_DEPTH_TEST); // permet de dire à OpenGL de tenir compte de la perspective lors de l'affichage des textures
 
-	Camera camera(width, height, glm::vec3(0.0f, 130.0f, 2.0f)); // création de l'objet caméra
+	Camera camera(width, height, glm::vec3(0.0f, 130.0f, 0.0f)); // création de l'objet caméra
 
 	// ========= La boucle principale ========= //
 	while (!glfwWindowShouldClose(window))
@@ -110,42 +103,27 @@ int main() {
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f); // efface le tampon et lui donne une couleur définie
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // applique le changement précédent
 
-		camera.Inputs(window);
-		
-		chunk->BindBloc(camera, window);
-		chunk1->BindBloc(camera, window);
-		chunk2->BindBloc(camera, window);
-		chunk2->BindBloc(camera, window);
-		chunk3->BindBloc(camera, window);
-		chunk4->BindBloc(camera, window);
-		chunk5->BindBloc(camera, window);
-		chunk6->BindBloc(camera, window);
-		chunk7->BindBloc(camera, window);
-		chunk8->BindBloc(camera, window);
+		frames++;
+		auto now = high_resolution_clock::now();
+		double elapsed = duration<double>(now - start).count();
+		if (elapsed >= 1.0) {
+			fps = frames / elapsed;
+			cout << "FPS : " << fps << endl;
+
+			frames = 0;
+			start = now;
+			cout << "Pos :" << camera.getPosition()[0] << ", " << camera.getPosition()[1] << ", " << camera.getPosition()[2] << endl;
+		}
+
+		inputsInit.processInput(window, camera);
+
+		generationInit.ChunkBind(camera, window, inputsInit.getVerticeMode());
 
 		glfwSwapBuffers(window); // échange les buffers
 	}
 
 	// destruction des objets créés
-	chunk->Delete();
-	chunk1->Delete();
-	chunk2->Delete();
-	chunk3->Delete();
-	chunk4->Delete();
-	chunk5->Delete();
-	chunk6->Delete();
-	chunk7->Delete();
-	chunk8->Delete();
-
-	delete chunk;
-	delete chunk1;
-	delete chunk2;
-	delete chunk3;
-	delete chunk4;
-	delete chunk5;
-	delete chunk6;
-	delete chunk7;
-	delete chunk8;
+	generationInit.Delete();
 
 	glfwDestroyWindow(window); // Fin de la fenêtre
 	glfwTerminate(); // Fin de l'utilisation de glfw

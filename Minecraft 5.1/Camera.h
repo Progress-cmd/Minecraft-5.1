@@ -30,7 +30,6 @@ public:
 
 	bool leftClic = true;
 
-	bool keyF10 = false;
 	bool keyF11 = false;
 	bool pleinEcran = false;
 
@@ -38,7 +37,7 @@ public:
 
 	void Matrix(float FOVdeg, float nearPlan, float farPlan, Shader& shader, const char* uniform); // création et envoie des matrices de vues et projections aux shaders
 	void Inputs(GLFWwindow* window); // gère les entrée
-	void f10(GLFWwindow* window, Shader& shader, const char* uniform);
+	glm::vec3 getPosition();
 };
 
 #endif 
