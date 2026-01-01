@@ -11,7 +11,9 @@ graph TD
     MAIN[main.cpp]
 
 %% Classes
+    GEN[Generation.h]
     CHUNK[Chunk.h]
+    INPUT[Inputs.h]
     CAM[Camera.h]
     VAO[VAO.h]
     VBO[VBO.h]
@@ -29,7 +31,12 @@ graph TD
 %% =======================
 %% LIENS
 %% =======================
-    MAIN --> CHUNK
+    MAIN --> GEN
+
+    GEN --> CHUNK
+
+    INPUT --> CHUNK
+    INPUT --> CAM
 
     CHUNK --> CAM
     CHUNK --> VAO
@@ -39,6 +46,8 @@ graph TD
     CHUNK --> SHD
 
     VAO --> VBO
+
+    CAM --> SHD
 
     TEX --> SHD
     TEX --> BMP
@@ -54,7 +63,9 @@ subgraph Fonction_Principale
 end
 
 subgraph Classes
+    GEN
     CHUNK
+    INPUT
     CAM
     VAO
     VBO
@@ -80,5 +91,5 @@ end
     style VERT fill:#d0ffd0
     style FRAG fill:#d0ffd0
     style BMP fill:#ffe9a6
-
+    style INPUT fill:#b661f2
 ```
