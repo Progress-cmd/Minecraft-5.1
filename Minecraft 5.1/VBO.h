@@ -10,6 +10,7 @@ public:
 	GLuint ID; // identifiant de référence
 	VBO(GLsizeiptr size);
 	VBO(std::vector<GLfloat>* vertices, GLsizeiptr size); // contructeur
+	void updateData(std::vector<GLfloat>& vertices);
 
 	void Bind(); // activation
 	void Unbind(); // désactivation

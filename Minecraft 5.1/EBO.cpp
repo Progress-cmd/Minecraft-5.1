@@ -8,6 +8,12 @@ EBO::EBO(std::vector<GLuint>* indices, GLsizeiptr size)
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, indices, GL_STATIC_DRAW); // (type de tampon, taille des données, données, usage des données) stocke les données dans le tampon EBO
 }
 
+void EBO::updateData(std::vector<GLuint>& indices) {
+	Bind();
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.empty() ? nullptr : indices.data(), GL_STATIC_DRAW);
+	Unbind();
+}
+
 // activation du EBO
 void EBO::Bind()
 {

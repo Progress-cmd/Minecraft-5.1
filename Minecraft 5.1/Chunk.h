@@ -13,6 +13,9 @@
 #include <array>
 #include <map>
 #include <cstdlib>
+#include <glm.hpp>
+
+class Generation;
 
 class Chunk
 {
@@ -152,19 +155,27 @@ protected:
 	std::vector<GLfloat> vertices;
 	std::vector<GLuint> indices;
 
+	Generation* world;
+
+	bool dirty = true;
+
 	// Fonctions membres
-	bool isAir(int x, int y, int z);
 	void addFace(std::vector<GLfloat>& v, std::vector<GLuint>& i, const FaceData& face, int x, int y, int z);
 	void typeBloc(int id);
 
-
 public:
-	Chunk(const int xChunk, const int yChunk);
+	Chunk(int xChunk, int yChunk, Generation* world);
 	void BindBloc(Camera& camera, GLFWwindow* window, bool verticeMode);
 	void Delete();
 
 	// génération du chunk
-	void Generation();
+	void generateChunk();
+
+	uint8_t getBlock(int lx, int y, int lz) const;
+	int getX() const { return m_xChunk; }
+	int getZ() const { return m_yChunk; }
+
+	void markDirty();
 };
 
 #endif CHUNK_H

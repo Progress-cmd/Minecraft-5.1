@@ -1,12 +1,14 @@
 #include "Chunk.h"
+#include "Generation.h"
 
-Chunk::Chunk(const int xChunk, const int yChunk) :
+Chunk::Chunk(int xChunk, int yChunk, Generation* w):
 	shaderProgramBloc("default.vert", "default.frag"),
-	VBOBloc(&vertices, vertices.size()),
-	EBOBloc(&indices, indices.size()),
+	VBOBloc(&vertices, 0),
+	EBOBloc(&indices, 0),
 	bitmap("bitmap.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE),
 	m_xChunk(xChunk),
-	m_yChunk(yChunk)
+	m_yChunk(yChunk),
+	world(w)
 {
 	// Initialise tous les blocs à type = 1
 	for (int x = 0; x < CHUNK_X; x++)
@@ -26,7 +28,7 @@ Chunk::Chunk(const int xChunk, const int yChunk) :
 	uvArray[1] = glm::vec2(0.0f, 1.0f);
 	uvArray[2] = glm::vec2(0.0625f, 1.0f);
 	uvArray[3] = glm::vec2(0.0625f, 0.9375f);
-
+	
 	// Initialisation du VAO et association de la texture
 	VAOBloc.Bind();
 	bitmap.texUnit(shaderProgramBloc, "tex0", 0);
@@ -41,8 +43,18 @@ Chunk::Chunk(const int xChunk, const int yChunk) :
 	faces[5] = FACE_NEG_Z;
 }
 
-void Chunk::Generation()
+void Chunk::generateChunk()
 {
+	VBOBloc.updateData(vertices);  // ou une fonction que tu écris pour remplir le VBO
+	EBOBloc.updateData(indices);
+
+	if (!dirty) return;
+		
+	dirty = false;
+
+	vertices.clear();
+	indices.clear();
+
 	for (int x = m_xChunk * 16; x < m_xChunk * 16 + 16; x++)
 	{
 		for (int y = 0; y < 128; y++)
@@ -68,12 +80,24 @@ void Chunk::Generation()
 				typeBloc(blockTypes[tempType][1]);
 				FACE_NEG_Y.uvs = uvArray;
 				// Pour chaque face : check le voisin
-				if (isAir(x + 1, y, z)) addFace(vertices, indices, FACE_POS_X, x, y, z);
-				if (isAir(x - 1, y, z)) addFace(vertices, indices, FACE_NEG_X, x, y, z);
-				if (isAir(x, y + 1, z)) addFace(vertices, indices, FACE_POS_Y, x, y, z);
-				if (isAir(x, y - 1, z)) addFace(vertices, indices, FACE_NEG_Y, x, y, z);
-				if (isAir(x, y, z + 1)) addFace(vertices, indices, FACE_POS_Z, x, y, z);
-				if (isAir(x, y, z - 1)) addFace(vertices, indices, FACE_NEG_Z, x, y, z);
+				if (world->getBlock(x + 1, y, z) == 0)
+					addFace(vertices, indices, FACE_POS_X, x, y, z);
+
+				if (world->getBlock(x - 1, y, z) == 0)
+					addFace(vertices, indices, FACE_NEG_X, x, y, z);
+
+				if (world->getBlock(x, y + 1, z) == 0)
+					addFace(vertices, indices, FACE_POS_Y, x, y, z);
+
+				if (world->getBlock(x, y - 1, z) == 0)
+					addFace(vertices, indices, FACE_NEG_Y, x, y, z);
+
+				if (world->getBlock(x, y, z + 1) == 0)
+					addFace(vertices, indices, FACE_POS_Z, x, y, z);
+
+				if (world->getBlock(x, y, z - 1) == 0)
+					addFace(vertices, indices, FACE_NEG_Z, x, y, z);
+
 			}
 		}
 	}
@@ -113,23 +137,9 @@ void Chunk::typeBloc(int id)
 	uvArray[3] = glm::vec2(u + 0.0625, 1.0f - v - 0.0625);
 }
 
-bool Chunk::isAir(int x, int y, int z)
-{
-	// check limites du chunk
-	if (x < m_xChunk * 16 || x >= m_xChunk * 16 + 16) return true;
-	if (y < 0 || y >= 128) return true;
-	if (z < m_yChunk * 16 || z >= m_yChunk * 16 + 16) return true;
-
-	int lx = x - m_xChunk * 16;
-	int lz = z - m_yChunk * 16;
-
-	int idx = lx + CHUNK_X * (lz + CHUNK_Z * y);
-	return blocks[idx].type == 0;
-}
-
 void Chunk::addFace(std::vector<GLfloat>& v, std::vector<GLuint>& i, const FaceData& face, int x, int y, int z)
 {
-	int startIndex = v.size() / 5;
+	int startIndex = static_cast<int>(v.size() / 5);
 
 	for (int n = 0; n < 4; n++)
 	{
@@ -173,4 +183,20 @@ void Chunk::Delete()
 	EBOBloc.Delete();
 	shaderProgramBloc.Delete();
 	bitmap.Delete();
+}
+
+uint8_t Chunk::getBlock(int lx, int y, int lz) const
+{
+	if (lx < 0 || lx >= CHUNK_X ||
+		lz < 0 || lz >= CHUNK_Z ||
+		y < 0 || y >= CHUNK_Y)
+		return 0;
+
+	int idx = lx + CHUNK_X * (lz + CHUNK_Z * y);
+	return blocks[idx].type;
+}
+
+void Chunk::markDirty()
+{
+	dirty = true;
 }

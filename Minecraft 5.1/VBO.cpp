@@ -16,6 +16,13 @@ VBO::VBO(std::vector<GLfloat>* vertices, GLsizeiptr size)
 	glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW); // (type de tampon, taille des données, données, usage des données) stocke les données dans le tampon VBO
 }
 
+void VBO::updateData(std::vector<GLfloat>& vertices)
+{
+	Bind();
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), vertices.empty() ? nullptr : vertices.data(), GL_STATIC_DRAW);
+	Unbind();
+}
+
 // activation du VBO
 void VBO::Bind()
 {
