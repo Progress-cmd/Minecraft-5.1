@@ -25,7 +25,7 @@ public:
 	int width; // taille de la caméra (x)
 	int height; // taille de la caméra (y)
 
-	float speed = 0.01f; // vitesse de la caméra
+	float speed = 0.1f; // vitesse de la caméra
 	float sensitivity = 100.0f; // sensibilité de la caméra
 
 	bool leftClic = true;
