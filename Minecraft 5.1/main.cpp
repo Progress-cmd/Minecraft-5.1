@@ -59,16 +59,6 @@ void Erreurs(int value)
 	}
 }
 
-void escape(GLFWwindow* window, int key, int action)
-{
-	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, GL_TRUE); // fermeture de la fenêtre
-}
-
-void sortieClavier(GLFWwindow* window, int key, int scancode, int action, int mode) {
-	escape(window, key, action);
-}
-
 
 // =========== La fonction main =========== //
 int main() {
@@ -82,8 +72,6 @@ int main() {
 	GLFWwindow* window = glfwCreateWindow(width, height, "Minecraft", NULL, NULL); // création de la fenêtre
 	if (window == NULL) { Erreurs(1); glfwTerminate(); return -1; } // vérifi que la window est bien créée
 	glfwMakeContextCurrent(window); // dit à glfw d'utiliser la fenêtre window
-
-	glfwSetKeyCallback(window, sortieClavier); // écoute les entrées de clavier
 
 	gladLoadGL(); // chargement des fonctions de glad
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) { Erreurs(2); return -1; } // vérifi que la librairie a bien tout chargée
@@ -99,7 +87,7 @@ int main() {
 
 	// ========= La boucle principale ========= //
 	while (!glfwWindowShouldClose(window))
-	{	
+	{
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f); // efface le tampon et lui donne une couleur définie
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // applique le changement précédent
 		

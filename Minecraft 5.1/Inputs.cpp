@@ -10,7 +10,7 @@ Inputs::Inputs()
 void Inputs::processInput(GLFWwindow* window, Camera& camera)
 {
 	camera.Inputs(window);
-		if (glfwGetKey(window, GLFW_KEY_F10) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_F10) == GLFW_PRESS)
 	{
 		if (keyF10)
 		{
@@ -25,6 +25,8 @@ void Inputs::processInput(GLFWwindow* window, Camera& camera)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		keyF10 = true;
 	}
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, GL_TRUE); // fermeture de la fenêtre
 }
 
 bool Inputs::getVerticeMode()
