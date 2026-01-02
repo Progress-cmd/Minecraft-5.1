@@ -19,6 +19,9 @@
     <Filter Include="Fichiers de ressources\Textures">
       <UniqueIdentifier>{4a2293ec-9b31-4767-b832-5b4536a71a37}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Fichiers de ressources\Fonts">
+      <UniqueIdentifier>{eed76160-a317-4cc4-a8be-f0ba6a14ca1a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -60,6 +63,9 @@
     <ClCompile Include="Inputs.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
+    <ClCompile Include="Polices.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="default.frag">
@@ -70,6 +76,12 @@
     </None>
     <None Include="..\README.md">
       <Filter>Fichiers de ressources</Filter>
+    </None>
+    <None Include="polices.vert">
+      <Filter>Fichiers de ressources\Shaders</Filter>
+    </None>
+    <None Include="polices.frag">
+      <Filter>Fichiers de ressources\Shaders</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
@@ -97,10 +109,18 @@
     <ClInclude Include="Inputs.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
+    <ClInclude Include="Polices.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="bitmap.png">
       <Filter>Fichiers de ressources\Textures</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="arial.ttf">
+      <Filter>Fichiers de ressources\Fonts</Filter>
+    </Font>
   </ItemGroup>
 </Project>

@@ -1,6 +1,13 @@
 #include"VBO.h"
 #include<iostream>
 
+VBO::VBO(GLsizeiptr size)
+{
+	glGenBuffers(1, &ID);
+	glBindBuffer(GL_ARRAY_BUFFER, ID);
+	glBufferData(GL_ARRAY_BUFFER, size, nullptr, GL_DYNAMIC_DRAW);
+}
+
 // Création du VBO (Vertex Buffer Object) un tampon de sommets
 VBO::VBO(std::vector<GLfloat>* vertices, GLsizeiptr size)
 {

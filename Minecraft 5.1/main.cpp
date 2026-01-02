@@ -12,7 +12,7 @@
 #include <gtc/type_ptr.hpp>
 #include <stb_image.h> // Utilisation des textures
 #include <chrono>
-
+#include <string>
 
 // ========= Les fichiers sources ========= //
 #include "shaderClass.h"
@@ -24,6 +24,7 @@
 #include "Chunk.h"
 #include "Generation.h"
 #include "Inputs.h"
+#include "Polices.h"
 
 
 
@@ -91,39 +92,48 @@ int main() {
 
 	generationInit.ChunkGeneration();
 
-	glEnable(GL_DEPTH_TEST); // permet de dire à OpenGL de tenir compte de la perspective lors de l'affichage des textures
-
 	Camera camera(width, height, glm::vec3(0.0f, 130.0f, 0.0f)); // création de l'objet caméra
+
+	Polices policesInit;
 
 	// ========= La boucle principale ========= //
 	while (!glfwWindowShouldClose(window))
-	{
-		glfwPollEvents(); // dit de faire attention aux évenements que va subire la fenêtre
-		
+	{	
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f); // efface le tampon et lui donne une couleur définie
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // applique le changement précédent
+		
+		inputsInit.processInput(window, camera);
+
+		// ----- 3D -----
+		glEnable(GL_DEPTH_TEST); // permet de dire à OpenGL de tenir compte de la perspective lors de l'affichage des textures
+		generationInit.ChunkBind(camera, window, inputsInit.getVerticeMode());
+
+		// ----- Texte -----
+		glDisable(GL_DEPTH_TEST);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		frames++;
 		auto now = high_resolution_clock::now();
 		double elapsed = duration<double>(now - start).count();
 		if (elapsed >= 1.0) {
 			fps = frames / elapsed;
-			cout << "FPS : " << fps << endl;
 
 			frames = 0;
 			start = now;
-			cout << "Pos :" << camera.getPosition()[0] << ", " << camera.getPosition()[1] << ", " << camera.getPosition()[2] << endl;
 		}
 
-		inputsInit.processInput(window, camera);
-
-		generationInit.ChunkBind(camera, window, inputsInit.getVerticeMode());
+		policesInit.useTextShader(width, height);
+		policesInit.RenderText("FPS : " + to_string((int)fps), 10.0f, height - 50.0f, 1.0f);
+		policesInit.RenderText("Pos : " + to_string(camera.getPosition()[0]) + ", " + to_string(camera.getPosition()[1]) + ", " + to_string(camera.getPosition()[2]), 10.0f, height - 25.0f, 1.0f);
 
 		glfwSwapBuffers(window); // échange les buffers
+		glfwPollEvents(); // dit de faire attention aux évenements que va subire la fenêtre
 	}
 
 	// destruction des objets créés
 	generationInit.Delete();
+	policesInit.~Polices();
 
 	glfwDestroyWindow(window); // Fin de la fenêtre
 	glfwTerminate(); // Fin de l'utilisation de glfw

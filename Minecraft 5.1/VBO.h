@@ -8,6 +8,7 @@ class VBO // c'est le Vertex Buffer Object
 {
 public:
 	GLuint ID; // identifiant de référence
+	VBO(GLsizeiptr size);
 	VBO(std::vector<GLfloat>* vertices, GLsizeiptr size); // contructeur
 
 	void Bind(); // activation

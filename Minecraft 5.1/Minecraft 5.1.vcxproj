@@ -105,14 +105,14 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)\..\libs\glfw\include\;$(ProjectDir)\..\libs\glad\include\;$(ProjectDir)\..\libs\glm;$(ProjectDir)\..\libs\stb;C:\Users\Haspot\Documents\01_Perso\Codes\C ++\Projets visual studio\Projets\Minecraft 5.1\libs\Freetype-master\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\..\libs\glfw\include\;$(ProjectDir)\..\libs\glad\include\;$(ProjectDir)\..\libs\glm;$(ProjectDir)\..\libs\stb;$(ProjectDir)\..\libs\freetype\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)\..\libs\glfw\lib-vc2022</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)\..\libs\glfw\lib-vc2022;$(ProjectDir)\..\libs\freetype\objs</AdditionalLibraryDirectories>
       <AdditionalDependencies>glfw3.lib
-;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+;opengl32.lib;freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -139,6 +139,7 @@
     <ClCompile Include="Generation.cpp" />
     <ClCompile Include="Inputs.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Polices.cpp" />
     <ClCompile Include="shaderClass.cpp" />
     <ClCompile Include="stb.cpp" />
     <ClCompile Include="Texture.cpp" />
@@ -149,12 +150,15 @@
     <None Include="..\README.md" />
     <None Include="default.frag" />
     <None Include="default.vert" />
+    <None Include="polices.frag" />
+    <None Include="polices.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Chunk.h" />
     <ClInclude Include="EBO.h" />
     <ClInclude Include="Generation.h" />
     <ClInclude Include="Inputs.h" />
+    <ClInclude Include="Polices.h" />
     <ClInclude Include="shaderClass.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="VAO.h" />
@@ -162,6 +166,9 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="bitmap.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="arial.ttf" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -9,6 +9,7 @@ VAO::VAO()
 // Links a VBO to the VAO using a certain layout
 void VAO::LinkAttrib(VBO& VBO, GLuint layout, GLuint numComponents, GLenum type, GLsizeiptr stride, void* offset)
 {
+	Bind();
 	VBO.Bind();
 	glVertexAttribPointer(layout, numComponents, type, GL_FALSE, stride, offset); // (position du premier argument, nombre de valeur par sommet, type, ..., pas, pointeur vers la position de début) configuration de VAO, permet la communication entre l'attribut de vertex et le shader vertex
 	glEnableVertexAttribArray(layout); // activation du VAO, zéro car c'est la position du vertexAttribPointeur
