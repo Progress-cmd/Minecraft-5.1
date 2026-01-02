@@ -15,7 +15,8 @@ Chunk::Chunk(const int xChunk, const int yChunk) :
 		{
 			for (int z = 0; z < CHUNK_Z; z++)
 			{
-				blocks[x + CHUNK_X * (z + CHUNK_Z * y)].type = 1;
+				int idx = x + CHUNK_X * (z + CHUNK_Z * y);
+				blocks[idx].type = 1;
 			}
 		}
 	}
@@ -48,10 +49,15 @@ void Chunk::Generation()
 		{
 			for (int z = m_yChunk * 16; z < m_yChunk * 16 + 16; z++)
 			{
-				uint8_t b = blocks[x + 16 * (z + 16 * y)].type;
+				int lx = x - m_xChunk * 16;
+				int lz = z - m_yChunk * 16;
+
+				int idx = lx + CHUNK_X * (lz + CHUNK_Z * y);
+				uint8_t b = blocks[idx].type;
+
 				if (b == 0) continue;
 
-				int tempType = blocks[x + CHUNK_X * (z + CHUNK_Z * y)].type;
+				int tempType = blocks[idx].type;
 				typeBloc(blockTypes[tempType][2]);
 				FACE_POS_X.uvs = uvArray;
 				FACE_NEG_X.uvs = uvArray;
@@ -114,7 +120,10 @@ bool Chunk::isAir(int x, int y, int z)
 	if (y < 0 || y >= 128) return true;
 	if (z < m_yChunk * 16 || z >= m_yChunk * 16 + 16) return true;
 
-	int idx = x + 16 * (z + 16 * y);
+	int lx = x - m_xChunk * 16;
+	int lz = z - m_yChunk * 16;
+
+	int idx = lx + CHUNK_X * (lz + CHUNK_Z * y);
 	return blocks[idx].type == 0;
 }
 
