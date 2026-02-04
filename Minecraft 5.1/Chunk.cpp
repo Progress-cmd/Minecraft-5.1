@@ -49,7 +49,7 @@ void Chunk::generateChunk()
 	EBOBloc.updateData(indices);
 
 	if (!dirty) return;
-		
+	
 	dirty = false;
 
 	vertices.clear();

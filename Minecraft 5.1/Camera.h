@@ -17,10 +17,6 @@ public:
 	glm::vec3 Position; // position de la caméra
 	glm::vec3 Orientation = glm::vec3(0.0f, 0.0f, -1.0f); // orientation de la caméra
 	glm::vec3 Up = glm::vec3(0.0f, 1.0f, 0.0f); // axe vertical de la caméra
-
-	// vecteurs de déplacement
-	glm::vec3 zAxe = glm::vec3(0.0f, 0.0f, 1.0f);
-	glm::vec3 xAxe = glm::vec3(1.0f, 0.0f, 0.0f);
 	
 	int width; // taille de la caméra (x)
 	int height; // taille de la caméra (y)
