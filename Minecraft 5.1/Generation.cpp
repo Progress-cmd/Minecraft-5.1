@@ -27,46 +27,46 @@ void Generation::stop() {
 }
 
 void Generation::workerLoop() {
-    while (running) {
-        std::pair<int, int> coords;
-        bool found = false;
+	while (running) {
+		std::pair<int, int> coords;
+		bool found = false;
 
-        // 1. On récupère la requête
-        {
-            std::lock_guard<std::mutex> lock(meshMutex);
-            if (!meshRequests.empty()) {
-                coords = meshRequests.front();
-                meshRequests.pop();
-                found = true;
-            }
-        }
+		// 1. On récupère la requête
+		{
+			std::lock_guard<std::mutex> lock(meshMutex);
+			if (!meshRequests.empty()) {
+				coords = meshRequests.front();
+				meshRequests.pop();
+				found = true;
+			}
+		}
 
-        if (found) {
-            Chunk* chunk = nullptr;
+		if (found) {
+			Chunk* chunk = nullptr;
 
-            // 2. On verrouille juste pour récupérer le pointeur et dire "Je travaille dessus"
-            {
-                std::lock_guard<std::recursive_mutex> lock(chunkMutex);
-                chunk = getChunk(coords.first, coords.second);
-                if (chunk) chunk->setGenerating(true); // <--- IMPORTANT
-            } // ICI on relâche le chunkMutex ! Le draw() peut reprendre.
+			// 2. On verrouille juste pour récupérer le pointeur et dire "Je travaille dessus"
+			{
+				std::lock_guard<std::recursive_mutex> lock(chunkMutex);
+				chunk = getChunk(coords.first, coords.second);
+				if (chunk) chunk->setGenerating(true); // <--- IMPORTANT
+			} // ICI on relâche le chunkMutex ! Le draw() peut reprendre.
 
-            if (chunk != nullptr) {
-                // 3. Calcul LOURD fait sans bloquer le draw() !
-                ChunkData data = chunk->buildMeshCPU();
+			if (chunk != nullptr) {
+				// 3. Calcul LOURD fait sans bloquer le draw() !
+				ChunkData data = chunk->buildMeshCPU();
 
-                // 4. On a fini, on remet le flag à false
-                chunk->setGenerating(false);
+				// 4. On a fini, on remet le flag à false
+				chunk->setGenerating(false);
 
-                // 5. On pousse le résultat
-                std::lock_guard<std::mutex> lock(meshMutex);
-                readyMeshes.push(data);
-            }
-        }
-        else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(2));
-        }
-    }
+				// 5. On pousse le résultat
+				std::lock_guard<std::mutex> lock(meshMutex);
+				readyMeshes.push(data);
+			}
+		}
+		else {
+			std::this_thread::sleep_for(std::chrono::milliseconds(2));
+		}
+	}
 }
 
 void Generation::updateMainThread() {
@@ -158,7 +158,7 @@ uint8_t Generation::getBlock(int x, int y, int z)
 void Generation::updateWorld(glm::vec3 playerPos) {
 	int playerChunkX = static_cast<int>(std::floor(playerPos.x / 16.0f));
 	int playerChunkZ = static_cast<int>(std::floor(playerPos.z / 16.0f));
-	
+
 	// 1. Suppression des chunks lointains
 	{
 		std::lock_guard<std::recursive_mutex> lock(chunkMutex);

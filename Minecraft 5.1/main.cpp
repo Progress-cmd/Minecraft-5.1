@@ -90,10 +90,10 @@ int main() {
 	{
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f); // efface le tampon et lui donne une couleur définie
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // applique le changement précédent
-		
+
 		auto now1 = high_resolution_clock::now();
 		double elapsed1 = duration<double>(now1 - start1).count();
-		if (elapsed1 >= (1.0/60)) {
+		if (elapsed1 >= (1.0 / 60)) {
 			inputsInit.processInput(window, camera);
 
 			start1 = now1;
