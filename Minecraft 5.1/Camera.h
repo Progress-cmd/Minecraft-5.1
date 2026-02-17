@@ -13,11 +13,11 @@
 
 class Camera
 {
-public:
+protected:
 	glm::vec3 Position; // position de la caméra
 	glm::vec3 Orientation = glm::vec3(0.0f, 0.0f, -1.0f); // orientation de la caméra
 	glm::vec3 Up = glm::vec3(0.0f, 1.0f, 0.0f); // axe vertical de la caméra
-	
+
 	int width; // taille de la caméra (x)
 	int height; // taille de la caméra (y)
 
@@ -29,6 +29,7 @@ public:
 	bool keyF11 = false;
 	bool pleinEcran = false;
 
+public:
 	Camera(int width, int height, glm::vec3 position); // constucteur basique
 
 	void Matrix(float FOVdeg, float nearPlan, float farPlan, Shader& shader, const char* uniform); // création et envoie des matrices de vues et projections aux shaders

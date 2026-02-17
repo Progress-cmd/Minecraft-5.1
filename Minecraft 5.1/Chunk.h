@@ -1,181 +1,111 @@
 #ifndef CHUNK_H
 #define CHUNK_H
 
-#include <glad/glad.h>
-#include "VAO.h"
-#include "VBO.h"
-#include "EBO.h"
-#include "Texture.h"
-#include "Camera.h"
-#include "shaderClass.h"
-
 #include <vector>
-#include <array>
-#include <map>
-#include <cstdlib>
-#include <glm.hpp>
+#include <glad/glad.h>
 
+
+class VAO;
+class VBO;
+class EBO;
+class Texture;
+class Shader;
+class Camera;
 class Generation;
+
+
+struct ChunkData {
+    int cx; // Coordonnée X du chunk
+    int cz; // Coordonnée Z du chunk
+    std::vector<GLfloat> vertices;
+    std::vector<GLuint> indices;
+};
+
 
 class Chunk
 {
-protected:
-	// Initialisation des structures
-	struct Block { uint8_t type; };
-	struct FaceData { std::array<glm::vec3, 4> verts; std::array<glm::vec2, 4> uvs; };
-
-	// Initialisation des types de blocs
-	std::map<int, std::array<int, 3>> blockTypes =
-	{//id, {Up, Down, Sides}
-	{1, {0, 0, 0}},    // Dirt
-	{2, {1, 0, 2}},    // Grass
-	{3, {3, 3, 3}},    // Stone
-	{4, {4, 4, 4}}     // Wood
-	};
-
-	// Création des objets
-	Texture bitmap;
-	VAO VAOBloc;
-	Shader shaderProgramBloc;
-	VBO VBOBloc;
-	EBO EBOBloc;
-
-	// Tableau stockant les UVs de 
-	std::array<glm::vec2, 4> uvArray;
-
-	// Définition des faces d'un cube
-	FaceData FACE_POS_X = {
-	{
-		glm::vec3(0.5f, -0.5f, -0.5f),
-		glm::vec3(0.5f,  0.5f, -0.5f),
-		glm::vec3(0.5f,  0.5f,  0.5f),
-		glm::vec3(0.5f, -0.5f,  0.5f)
-	},
-	{
-		glm::vec2(1.0f / 16 * 0,  1.0f / 16 * 15),
-		glm::vec2(1.0f / 16 * 0,  1.0f / 16 * 16),
-		glm::vec2(1.0f / 16 * 1,  1.0f / 16 * 16),
-		glm::vec2(1.0f / 16 * 1,  1.0f / 16 * 15)
-	}
-	};
-	FaceData FACE_NEG_X = {
-	{
-		glm::vec3(-0.5f, -0.5f,  0.5f),
-		glm::vec3(-0.5f,  0.5f,  0.5f),
-		glm::vec3(-0.5f,  0.5f, -0.5f),
-		glm::vec3(-0.5f, -0.5f, -0.5f)
-	},
-	{
-		glm::vec2(1.0f / 16 * 0,  1.0f / 16 * 15),
-		glm::vec2(1.0f / 16 * 0,  1.0f / 16 * 16),
-		glm::vec2(1.0f / 16 * 1,  1.0f / 16 * 16),
-		glm::vec2(1.0f / 16 * 1,  1.0f / 16 * 15)
-	}
-	};
-	FaceData FACE_POS_Y = {
-	{
-		glm::vec3(-0.5f,  0.5f, -0.5f),
-		glm::vec3(-0.5f,  0.5f,  0.5f),
-		glm::vec3(0.5f,  0.5f,  0.5f),
-		glm::vec3(0.5f,  0.5f, -0.5f)
-	},
-	{
-		glm::vec2(1.0f / 16 * 0,  1.0f / 16 * 15),
-		glm::vec2(1.0f / 16 * 0,  1.0f / 16 * 16),
-		glm::vec2(1.0f / 16 * 1,  1.0f / 16 * 16),
-		glm::vec2(1.0f / 16 * 1,  1.0f / 16 * 15)
-	}
-	};
-	FaceData FACE_NEG_Y = {
-	{
-		glm::vec3(-0.5f, -0.5f,  0.5f),
-		glm::vec3(0.5f, -0.5f,  0.5f),
-		glm::vec3(0.5f, -0.5f, -0.5f),
-		glm::vec3(-0.5f, -0.5f, -0.5f)
-	},
-	{
-		glm::vec2(1.0f / 16 * 0,  1.0f / 16 * 15),
-		glm::vec2(1.0f / 16 * 0,  1.0f / 16 * 16),
-		glm::vec2(1.0f / 16 * 1,  1.0f / 16 * 16),
-		glm::vec2(1.0f / 16 * 1,  1.0f / 16 * 15)
-	}
-	};
-	FaceData FACE_POS_Z = {
-	{
-		glm::vec3(0.5f, -0.5f,  0.5f),
-		glm::vec3(0.5f,  0.5f,  0.5f),
-		glm::vec3(-0.5f,  0.5f,  0.5f),
-		glm::vec3(-0.5f, -0.5f,  0.5f)
-	},
-	{
-		glm::vec2(1.0f / 16 * 0,  1.0f / 16 * 15),
-		glm::vec2(1.0f / 16 * 0,  1.0f / 16 * 16),
-		glm::vec2(1.0f / 16 * 1,  1.0f / 16 * 16),
-		glm::vec2(1.0f / 16 * 1,  1.0f / 16 * 15)
-	}
-	};
-	FaceData FACE_NEG_Z = {
-	{
-		glm::vec3(-0.5f, -0.5f, -0.5f),
-		glm::vec3(-0.5f,  0.5f, -0.5f),
-		glm::vec3(0.5f,  0.5f, -0.5f),
-		glm::vec3(0.5f, -0.5f, -0.5f)
-	},
-	{
-		glm::vec2(1.0f / 16 * 0,  1.0f / 16 * 15),
-		glm::vec2(1.0f / 16 * 0,  1.0f / 16 * 16),
-		glm::vec2(1.0f / 16 * 1,  1.0f / 16 * 16),
-		glm::vec2(1.0f / 16 * 1,  1.0f / 16 * 15)
-	}
-	};
-	
-	FaceData faces[6] =
-	{
-		FACE_POS_X,
-		FACE_NEG_X,
-		FACE_POS_Y,
-		FACE_NEG_Y,
-		FACE_POS_Z,
-		FACE_NEG_Z
-	};
-
-	// Dimention du chunk
-	static const int CHUNK_X = 16;
-	static const int CHUNK_Y = 128;
-	static const int CHUNK_Z = 16;
-
-	// Tableau stockant les blocs du chunk
-	Block blocks[CHUNK_X * CHUNK_Y * CHUNK_Z];
-
-	// Les coordonnées du chunk
-	const int m_xChunk;
-	const int m_yChunk;
-
-	// Tableau de données pour le VBO et l'EBO
-	std::vector<GLfloat> vertices;
-	std::vector<GLuint> indices;
-
-	Generation* world;
-
-	bool dirty = true;
-
-	// Fonctions membres
-	void addFace(std::vector<GLfloat>& v, std::vector<GLuint>& i, const FaceData& face, int x, int y, int z);
-	void typeBloc(int id);
-
 public:
-	Chunk(int xChunk, int yChunk, Generation* world);
-	void BindBloc(Camera& camera, GLFWwindow* window, bool verticeMode);
-	void Delete();
+    // Dimensions du Chunk (Statiques pour accès global ex: Chunk::WIDTH)
+    static constexpr int WIDTH = 16;
+    static constexpr int HEIGHT = 128;
+    static constexpr int DEPTH = 16;
 
-	// génération du chunk
-	void generateChunk();
+    Chunk(int xChunk, int zChunk, Generation* world, Shader* m_sharedShader, Texture* m_sharedTexture);
+    ~Chunk();
 
-	uint8_t getBlock(int lx, int y, int lz) const;
-	int getX() const { return m_xChunk; }
-	int getZ() const { return m_yChunk; }
+    // --- Gestion du Mesh et Rendu ---
 
-	void markDirty();
+    // Construit les vertices/indices sur le CPU
+    ChunkData buildMeshCPU();
+
+    // Envoie les données préparées vers la carte graphique
+    void uploadMeshToGPU(const ChunkData& data);
+
+    // Affiche le chunk
+    void draw(Camera& camera, bool wireframeMode = false);
+
+    // --- Gestion des Blocs ---
+
+    uint8_t getBlock(int localX, int localY, int localZ) const;
+    void setBlock(int localX, int localY, int localZ, uint8_t type); // Si tu as besoin de modifier
+
+    // Marque le chunk pour régénération lors de la prochaine frame
+    void markDirty();
+    bool isGenerated() const { return m_isGenerated; }
+
+    // --- Getters ---
+    int getX() const { return m_xChunk; }
+    int getZ() const { return m_yChunk; }
+
+private:
+    // Structure interne pour un bloc (économise la mémoire)
+    struct Block {
+        uint8_t type = 0; // 0 = air par défaut
+    };
+
+    // --- Données Membres ---
+
+    // Coordonnées du chunk dans le monde
+    const int m_xChunk;
+    const int m_yChunk;
+
+    // Pointeur vers le monde (pour accéder aux voisins)
+    Generation* m_world;
+
+    // État du chunk
+    bool m_isDirty = true;      // Le mesh doit être mis à jour
+    bool m_isGenerated = false; // Le mesh a été uploadé au moins une fois
+
+    // Nombre d'indices
+    int m_indexCount = 0;
+
+    // Stockage des blocs (Aplatissement 3D -> 1D pour cache locality)
+    std::vector<Block> m_blocks;
+
+    // --- OpenGL Objects ---
+    // Utilisation de pointeurs ou d'objets (selon ton implémentation de VAO/VBO)
+    // Ici je garde tes objets tels quels, mais idéalement, ils devraient être des unique_ptr
+    // ou tes classes doivent gérer correctement la copie/déplacement.
+    VAO* m_vao;
+    VBO* m_vbo;
+    EBO* m_ebo;
+    Shader* m_shaderProgram;
+    Texture* m_texture;
+
+    // --- Fonctions utilitaires internes (Helper) ---
+
+    // Vérifie si un bloc est transparent/air pour l'optimisation des faces
+    bool shouldRenderFace(int x, int y, int z) const;
+
+    // Ajoute une face spécifique au tableau de vertices
+    // Note: FaceData n'est plus membre de la classe, mais passé en paramètre ou géré en interne
+    void addFaceGeometry(std::vector<GLfloat>& vertices, std::vector<GLuint>& indices,
+        int x, int y, int z, int faceDir, int blockType);
+
+    // Récupère l'index 1D depuis les coordonnées 3D locales
+    inline int getIndex(int x, int y, int z) const {
+        return x + WIDTH * (z + DEPTH * y);
+    }
 };
 
-#endif CHUNK_H
+#endif

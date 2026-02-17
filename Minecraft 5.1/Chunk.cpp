@@ -1,202 +1,256 @@
 #include "Chunk.h"
 #include "Generation.h"
+#include "Texture.h"
+#include "VAO.h"
+#include "VBO.h"
+#include "EBO.h"
+#include "Camera.h"
 
-Chunk::Chunk(int xChunk, int yChunk, Generation* w):
-	shaderProgramBloc("default.vert", "default.frag"),
-	VBOBloc(&vertices, 0),
-	EBOBloc(&indices, 0),
-	bitmap("bitmap.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE),
-	m_xChunk(xChunk),
-	m_yChunk(yChunk),
-	world(w)
+#include <map>
+#include <array>
+#include <glm.hpp>
+#include <gtc/matrix_transform.hpp>
+#include <gtc/type_ptr.hpp>
+
+
+// On définit les 6 faces : PosX, NegX, PosY, NegY, PosZ, NegZ
+// Chaque face a 4 sommets (x, y, z)
+static const float STRIDE_VERTICES[6][4][3] = {
+    // FACE_POS_X (+X)
+    {{0.5f, -0.5f, -0.5f}, {0.5f,  0.5f, -0.5f}, {0.5f,  0.5f,  0.5f}, {0.5f, -0.5f,  0.5f}},
+    // FACE_NEG_X (-X)
+    {{-0.5f, -0.5f,  0.5f}, {-0.5f,  0.5f,  0.5f}, {-0.5f,  0.5f, -0.5f}, {-0.5f, -0.5f, -0.5f}},
+    // FACE_POS_Y (+Y - TOP)
+    {{-0.5f,  0.5f, -0.5f}, {-0.5f,  0.5f,  0.5f}, {0.5f,  0.5f,  0.5f}, {0.5f,  0.5f, -0.5f}},
+    // FACE_NEG_Y (-Y - BOTTOM)
+    {{-0.5f, -0.5f,  0.5f}, {0.5f, -0.5f,  0.5f}, {0.5f, -0.5f, -0.5f}, {-0.5f, -0.5f, -0.5f}},
+    // FACE_POS_Z (+Z)
+    {{0.5f, -0.5f,  0.5f}, {0.5f,  0.5f,  0.5f}, {-0.5f,  0.5f,  0.5f}, {-0.5f, -0.5f,  0.5f}},
+    // FACE_NEG_Z (-Z)
+    {{-0.5f, -0.5f, -0.5f}, {-0.5f,  0.5f, -0.5f}, {0.5f,  0.5f, -0.5f}, {0.5f, -0.5f, -0.5f}}
+};
+
+// Les UVs de base pour une face (0 à 1 en local sur la texture)
+static const float STRIDE_UVS[4][2] = {
+    {0.0f, 0.0f}, {0.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, 0.0f}
+};
+
+static const std::map<int, std::array<int, 3>> BLOCK_TYPES =
+{   //id, {Up, Down, Sides}
+    {1, {0, 0, 0}},    // Dirt
+    {2, {1, 0, 2}},    // Grass
+    {3, {3, 3, 3}},    // Stone
+    {4, {4, 4, 4}}     // Wood
+};
+
+
+Chunk::Chunk(int xChunk, int zChunk, Generation* world, Shader* m_sharedShader, Texture* m_sharedTexture) : m_xChunk(xChunk), m_yChunk(zChunk), m_world(world), m_shaderProgram(m_sharedShader), m_texture(m_sharedTexture)
 {
-	// Initialise tous les blocs à type = 1
-	for (int x = 0; x < CHUNK_X; x++)
-	{
-		for (int y = 0; y < CHUNK_Y; y++)
-		{
-			for (int z = 0; z < CHUNK_Z; z++)
-			{
-				int idx = x + CHUNK_X * (z + CHUNK_Z * y);
-				blocks[idx].type = 1;
-			}
-		}
-	}
+    // 1. Initialisation du vecteur de blocs
+    // On redimensionne le vecteur pour contenir tous les blocs du chunk (16*128*16)
+    m_blocks.resize(WIDTH * HEIGHT * DEPTH);
 
-	// Initialisation des coordonnées de la texture de base (UV)
-	uvArray[0] = glm::vec2(0.0f, 0.9375f);
-	uvArray[1] = glm::vec2(0.0f, 1.0f);
-	uvArray[2] = glm::vec2(0.0625f, 1.0f);
-	uvArray[3] = glm::vec2(0.0625f, 0.9375f);
-	
-	// Initialisation du VAO et association de la texture
-	VAOBloc.Bind();
-	bitmap.texUnit(shaderProgramBloc, "tex0", 0);
-	VAOBloc.Unbind();
+    // Initialisation basique (tout en Dirt pour l'instant, comme ton ancien code)
+    for (int i = 0; i < m_blocks.size(); i++) {
+        m_blocks[i].type = 1;
+    }
 
-	// Init des faces (ordre cohérent)
-	faces[0] = FACE_POS_X;
-	faces[1] = FACE_NEG_X;
-	faces[2] = FACE_POS_Y;
-	faces[3] = FACE_NEG_Y;
-	faces[4] = FACE_POS_Z;
-	faces[5] = FACE_NEG_Z;
+    m_vao = new VAO();
+    m_vao->Bind();
+
+    // On prépare le VBO/EBO mais on ne met pas de données encore (nullptr)
+    m_vbo = new VBO(nullptr, 0); // Taille 0 pour l'instant
+    m_ebo = new EBO(nullptr, 0);
+
+    // Lier la texture au shader une fois pour toutes
+    m_texture->texUnit(*m_shaderProgram, "tex0", 0);
+
+    m_vao->Unbind();
+    m_vbo->Unbind();
+    m_ebo->Unbind();
 }
 
-void Chunk::generateChunk()
+Chunk::~Chunk()
 {
-	VBOBloc.updateData(vertices);  // ou une fonction que tu écris pour remplir le VBO
-	EBOBloc.updateData(indices);
-
-	if (!dirty) return;
-	
-	dirty = false;
-
-	vertices.clear();
-	indices.clear();
-
-	for (int x = m_xChunk * 16; x < m_xChunk * 16 + 16; x++)
-	{
-		for (int y = 0; y < 128; y++)
-		{
-			for (int z = m_yChunk * 16; z < m_yChunk * 16 + 16; z++)
-			{
-				int lx = x - m_xChunk * 16;
-				int lz = z - m_yChunk * 16;
-
-				int idx = lx + CHUNK_X * (lz + CHUNK_Z * y);
-				uint8_t b = blocks[idx].type;
-
-				if (b == 0) continue;
-
-				int tempType = blocks[idx].type;
-				typeBloc(blockTypes[tempType][2]);
-				FACE_POS_X.uvs = uvArray;
-				FACE_NEG_X.uvs = uvArray;
-				FACE_POS_Z.uvs = uvArray;
-				FACE_NEG_Z.uvs = uvArray;
-				typeBloc(blockTypes[tempType][0]);
-				FACE_POS_Y.uvs = uvArray;
-				typeBloc(blockTypes[tempType][1]);
-				FACE_NEG_Y.uvs = uvArray;
-				// Pour chaque face : check le voisin
-				if (world->getBlock(x + 1, y, z) == 0)
-					addFace(vertices, indices, FACE_POS_X, x, y, z);
-
-				if (world->getBlock(x - 1, y, z) == 0)
-					addFace(vertices, indices, FACE_NEG_X, x, y, z);
-
-				if (world->getBlock(x, y + 1, z) == 0)
-					addFace(vertices, indices, FACE_POS_Y, x, y, z);
-
-				if (world->getBlock(x, y - 1, z) == 0)
-					addFace(vertices, indices, FACE_NEG_Y, x, y, z);
-
-				if (world->getBlock(x, y, z + 1) == 0)
-					addFace(vertices, indices, FACE_POS_Z, x, y, z);
-
-				if (world->getBlock(x, y, z - 1) == 0)
-					addFace(vertices, indices, FACE_NEG_Z, x, y, z);
-
-			}
-		}
-	}
-
-	// liage du VAO, VBO, et EBO
-	VAOBloc.Bind();
-	VBOBloc.Bind();
-	EBOBloc.Bind();
-
-	// après avoir bindé VBOBloc et EBOBloc
-	glBindBuffer(GL_ARRAY_BUFFER, VBOBloc.ID); // adapte si ton VBO expose un membre ID
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), vertices.empty() ? nullptr : vertices.data(), GL_STATIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBOBloc.ID); // même remarque
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.empty() ? nullptr : indices.data(), GL_STATIC_DRAW);
-
-	// configuration des attributs
-	VAOBloc.LinkAttrib(VBOBloc, 0, 3, GL_FLOAT, 5 * sizeof(float), (void*)0); // lie le VBO au VAO
-	VAOBloc.LinkAttrib(VBOBloc, 1, 2, GL_FLOAT, 5 * sizeof(float), (void*)(3 * sizeof(float))); // les coordonnées de la texture
-
-	// délie tout les objets pour eviter une erreur de modification
-	VAOBloc.Unbind();
-	VBOBloc.Unbind();
-	EBOBloc.Unbind();
+    // Nettoyage de la mémoire (RAII manuel car on utilise des pointeurs bruts)
+    m_vao->Delete(); delete m_vao;
+    m_vbo->Delete(); delete m_vbo;
+    m_ebo->Delete(); delete m_ebo;
 }
 
-void Chunk::typeBloc(int id)
+// Récupère un bloc avec vérification des limites locales
+uint8_t Chunk::getBlock(int localX, int localY, int localZ) const
 {
-	int col = id % 16;
-	int row = id / 16;
+    if (localX < 0 || localX >= WIDTH ||
+        localY < 0 || localY >= HEIGHT ||
+        localZ < 0 || localZ >= DEPTH)
+        return 0; // Air par défaut si hors limites
 
-	float u = col / 16.0f;
-	float v = row / 16.0f;
-
-	uvArray[0] = glm::vec2(u, 1.0f - v - 0.0625);
-	uvArray[1] = glm::vec2(u, 1.0f - v);
-	uvArray[2] = glm::vec2(u + 0.0625, 1.0f - v);
-	uvArray[3] = glm::vec2(u + 0.0625, 1.0f - v - 0.0625);
+    return m_blocks[getIndex(localX, localY, localZ)].type;
 }
 
-void Chunk::addFace(std::vector<GLfloat>& v, std::vector<GLuint>& i, const FaceData& face, int x, int y, int z)
+void Chunk::setBlock(int localX, int localY, int localZ, uint8_t type)
 {
-	int startIndex = static_cast<int>(v.size() / 5);
-
-	for (int n = 0; n < 4; n++)
-	{
-		v.push_back(face.verts[n].x + x);
-		v.push_back(face.verts[n].y + y);
-		v.push_back(face.verts[n].z + z);
-		v.push_back(face.uvs[n].x);
-		v.push_back(face.uvs[n].y);
-	}
-
-	i.push_back(startIndex + 0);
-	i.push_back(startIndex + 1);
-	i.push_back(startIndex + 2);
-	i.push_back(startIndex + 2);
-	i.push_back(startIndex + 3);
-	i.push_back(startIndex + 0);
-}
-
-
-void Chunk::BindBloc(Camera& camera, GLFWwindow* window, bool verticeMode)
-{
-	shaderProgramBloc.Activate(); // dit à OpenGL quel shaderProgram utiliser
-	bitmap.Bind();
-	camera.Matrix(45.0f, 0.1f, 100.0f, shaderProgramBloc, "camMatrix"); // créé et envoie les matrices aux shaders
-	VAOBloc.Bind(); // lie le VAO pour que OpenGL sache l'utiliser
-	glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0); // dessine les éléments (type de forme, nombre d'éléments, type des indices, index des indices)
-	if (verticeMode)
-	{
-		glUniform1i(glGetUniformLocation(shaderProgramBloc.ID, "verticeMode"), true);
-	}
-	else
-	{
-		glUniform1i(glGetUniformLocation(shaderProgramBloc.ID, "verticeMode"), false);
-	}
-}
-
-void Chunk::Delete()
-{
-	VAOBloc.Delete();
-	VBOBloc.Delete();
-	EBOBloc.Delete();
-	shaderProgramBloc.Delete();
-	bitmap.Delete();
-}
-
-uint8_t Chunk::getBlock(int lx, int y, int lz) const
-{
-	if (lx < 0 || lx >= CHUNK_X ||
-		lz < 0 || lz >= CHUNK_Z ||
-		y < 0 || y >= CHUNK_Y)
-		return 0;
-
-	int idx = lx + CHUNK_X * (lz + CHUNK_Z * y);
-	return blocks[idx].type;
+    if (localX >= 0 && localX < WIDTH &&
+        localY >= 0 && localY < HEIGHT &&
+        localZ >= 0 && localZ < DEPTH)
+    {
+        m_blocks[getIndex(localX, localY, localZ)].type = type;
+        markDirty(); // Le mesh devra être reconstruit
+    }
 }
 
 void Chunk::markDirty()
 {
-	dirty = true;
+    m_isDirty = true;
+}
+
+ChunkData Chunk::buildMeshCPU()
+{
+    ChunkData data;
+    data.cx = m_xChunk;
+    data.cz = m_yChunk;
+
+    for (int x = 0; x < WIDTH; x++) {
+        for (int y = 0; y < HEIGHT; y++) {
+            for (int z = 0; z < DEPTH; z++) {
+                uint8_t type = getBlock(x, y, z);
+                if (type == 0) continue;
+
+                // On vérifie chaque voisin avec notre nouvelle fonction
+                if (shouldRenderFace(x + 1, y, z)) addFaceGeometry(data.vertices, data.indices, x, y, z, 0, type); // +X
+                if (shouldRenderFace(x - 1, y, z)) addFaceGeometry(data.vertices, data.indices, x, y, z, 1, type); // -X
+                if (shouldRenderFace(x, y + 1, z)) addFaceGeometry(data.vertices, data.indices, x, y, z, 2, type); // +Y
+                if (shouldRenderFace(x, y - 1, z)) addFaceGeometry(data.vertices, data.indices, x, y, z, 3, type); // -Y
+                if (shouldRenderFace(x, y, z + 1)) addFaceGeometry(data.vertices, data.indices, x, y, z, 4, type); // +Z
+                if (shouldRenderFace(x, y, z - 1)) addFaceGeometry(data.vertices, data.indices, x, y, z, 5, type); // -Z
+            }
+        }
+    }
+    return data;
+}
+
+void Chunk::addFaceGeometry(std::vector<GLfloat>& vertices, std::vector<GLuint>& indices, int x, int y, int z, int faceDir, int blockType)
+{
+    // 1. Calculer l'index de départ pour les indices
+    // (vertices contient 5 floats par sommet : x, y, z, u, v)
+    GLuint startIndex = static_cast<GLuint>(vertices.size() / 5);
+
+    // 2. Calculer l'ID de la Texture
+    // faceDir: 0=Right, 1=Left (Side), 2=Top, 3=Bottom, 4=Front, 5=Back (Side)
+    int texTypeIndex = 2; // Par défaut Side
+    if (faceDir == 2) texTypeIndex = 0; // Top
+    else if (faceDir == 3) texTypeIndex = 1; // Bottom
+
+    // On récupère l'ID de texture depuis la map statique
+    // Attention: il faut gérer le cas où le blockType n'est pas dans la map (crash prevention)
+    int texID = 0;
+    if (BLOCK_TYPES.find(blockType) != BLOCK_TYPES.end()) {
+        texID = BLOCK_TYPES.at(blockType)[texTypeIndex];
+    }
+
+    // Calcul UV Atlas
+    float uMin = (texID % 16) / 16.0f;
+    float vMin = 1.0f - ((texID / 16) / 16.0f) - 0.0625f; // Inversion Y standard OpenGL
+
+    // 3. Ajouter les 4 sommets de la face
+    for (int n = 0; n < 4; n++) {
+        // Position (Modèle + Monde)
+        vertices.push_back(STRIDE_VERTICES[faceDir][n][0] + x);
+        vertices.push_back(STRIDE_VERTICES[faceDir][n][1] + y);
+        vertices.push_back(STRIDE_VERTICES[faceDir][n][2] + z);
+
+        // UVs (Atlas)
+        float uOffset = STRIDE_UVS[n][0] * 0.0625f;
+        float vOffset = STRIDE_UVS[n][1] * 0.0625f;
+        vertices.push_back(uMin + uOffset);
+        vertices.push_back(vMin + vOffset);
+    }
+
+    // 4. Ajouter les indices (2 triangles pour faire un carré)
+    indices.push_back(startIndex + 0);
+    indices.push_back(startIndex + 1);
+    indices.push_back(startIndex + 2);
+    indices.push_back(startIndex + 2);
+    indices.push_back(startIndex + 3);
+    indices.push_back(startIndex + 0);
+}
+
+void Chunk::uploadMeshToGPU(const ChunkData& data)
+{
+    m_vao->Bind();
+
+    // Mise à jour du VBO
+    // Note: Dans ton code VBO.h, assure-toi d'avoir une méthode comme glBufferData
+    // ou utilise directement les commandes OpenGL si ta classe VBO est limitée.
+    // Ici je suppose que VBO a un constructeur ou une méthode update.
+    // Comme on a initialisé VBO avec nullptr, on doit re-bind et envoyer les data.
+
+    m_vbo->Bind();
+    glBufferData(GL_ARRAY_BUFFER, data.vertices.size() * sizeof(GLfloat), data.vertices.data(), GL_STATIC_DRAW);
+
+    m_ebo->Bind();
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.indices.size() * sizeof(GLuint), data.indices.data(), GL_STATIC_DRAW);
+
+    // Attributs : 0 = Pos (3 floats), 1 = UV (2 floats) -> Total stride = 5 floats
+    m_vao->LinkAttrib(*m_vbo, 0, 3, GL_FLOAT, 5 * sizeof(float), (void*)0);
+    m_vao->LinkAttrib(*m_vbo, 1, 2, GL_FLOAT, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+
+    m_vao->Unbind();
+    m_vbo->Unbind();
+    m_ebo->Unbind();
+
+    m_isGenerated = true;
+    m_indexCount = static_cast<int>(data.indices.size());
+}
+
+void Chunk::draw(Camera& camera, bool wireframeMode)
+{
+    if (!m_isGenerated || m_indexCount == 0) return;
+
+    m_shaderProgram->Activate();
+    m_texture->Bind();
+
+    // Mise à jour de la matrice caméra
+    // Assure-toi que les paramètres (FOV, near, far) correspondent à ta logique Camera.cpp
+    camera.Matrix(45.0f, 0.1f, 100.0f, *m_shaderProgram, "camMatrix");
+
+    // Position du Chunk dans le monde (Model Matrix)
+    // Ici, le VBO contient des coordonnées locales (0..15). 
+    // On doit déplacer le chunk à sa position m_xChunk * 16
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(m_xChunk * WIDTH, 0, m_yChunk * DEPTH));
+    glUniformMatrix4fv(glGetUniformLocation(m_shaderProgram->ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+
+    m_vao->Bind();
+
+    // Mode fil de fer optionnel
+    if (wireframeMode)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    else
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    m_ebo->Bind();
+    glDrawElements(GL_TRIANGLES, m_indexCount, GL_UNSIGNED_INT, 0);
+
+    m_vao->Unbind();
+}
+
+bool Chunk::shouldRenderFace(int x, int y, int z) const
+{
+    // 1. Si on dépasse les limites verticales (Y), c'est du vide, donc on dessine la face
+    if (y < 0 || y >= HEIGHT) return true;
+
+    // 2. Si on est à l'intérieur du chunk (entre 0 et 15 sur X et Z)
+    if (x >= 0 && x < WIDTH && z >= 0 && z < DEPTH)
+    {
+        return getBlock(x, y, z) == 0;
+    }
+
+    // 3. Si on est sur le bord du chunk, on doit demander au MONDE (m_world)
+    // car le voisin se trouve dans un AUTRE chunk.
+    int worldX = m_xChunk * WIDTH + x;
+    int worldZ = m_yChunk * DEPTH + z;
+
+    return m_world->getBlock(worldX, y, worldZ) == 0;
 }

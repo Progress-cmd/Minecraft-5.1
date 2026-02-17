@@ -13,6 +13,7 @@
 #include <stb_image.h> // Utilisation des textures
 #include <chrono>
 #include <string>
+#include <thread>
 
 // ========= Les fichiers sources ========= //
 #include "shaderClass.h"
@@ -78,8 +79,7 @@ int main() {
 
 	Inputs inputsInit;
 	Generation generationInit;
-
-	generationInit.ChunkGeneration();
+	generationInit.start();
 
 	Camera camera(width, height, glm::vec3(0.0f, 130.0f, 0.0f)); // création de l'objet caméra
 
@@ -100,8 +100,16 @@ int main() {
 		}
 
 		// ----- 3D -----
-		glEnable(GL_DEPTH_TEST); // permet de dire à OpenGL de tenir compte de la perspective lors de l'affichage des textures
-		generationInit.ChunkBind(camera, window, inputsInit.getVerticeMode());
+		// Mise à jour du monde
+		generationInit.updateWorld(camera.getPosition());
+
+		// Transfert des données CPU -> GPU
+		generationInit.updateMainThread();
+
+		// Rendu 3D
+		glEnable(GL_DEPTH_TEST);
+		// On utilise la fonction draw qui gère les matrices model en interne
+		generationInit.draw(camera, inputsInit.getVerticeMode());
 
 		// ----- Texte -----
 		glDisable(GL_DEPTH_TEST);
@@ -125,10 +133,6 @@ int main() {
 		glfwSwapBuffers(window); // échange les buffers
 		glfwPollEvents(); // dit de faire attention aux évenements que va subire la fenêtre
 	}
-
-	// destruction des objets créés
-	generationInit.Delete();
-	policesInit.~Polices();
 
 	glfwDestroyWindow(window); // Fin de la fenêtre
 	glfwTerminate(); // Fin de l'utilisation de glfw
