@@ -17,7 +17,7 @@ protected:
     Shader* m_sharedShader;
     Texture* m_sharedTexture;
 
-    std::vector<Chunk*> chunks;
+    std::map<std::pair<int, int>, Chunk*> chunkMap;
 
     // On utilise RenderDistance pour le dessin et GenerationDistance pour la création
     int RenderDistance = 6;

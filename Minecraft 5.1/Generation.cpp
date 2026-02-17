@@ -27,51 +27,65 @@ void Generation::stop() {
 }
 
 void Generation::workerLoop() {
-	while (running) {
-		std::pair<int, int> coords;
-		bool found = false;
+    while (running) {
+        std::pair<int, int> coords;
+        bool found = false;
 
-		{
-			std::lock_guard<std::mutex> lock(meshMutex);
-			if (!meshRequests.empty()) {
-				coords = meshRequests.front();
-				meshRequests.pop();
-				found = true;
-			}
-		}
+        // 1. On récupère la requête
+        {
+            std::lock_guard<std::mutex> lock(meshMutex);
+            if (!meshRequests.empty()) {
+                coords = meshRequests.front();
+                meshRequests.pop();
+                found = true;
+            }
+        }
 
-		if (found) {
-			std::lock_guard<std::recursive_mutex> lock(chunkMutex);
-			Chunk* chunk = getChunk(coords.first, coords.second);
+        if (found) {
+            Chunk* chunk = nullptr;
 
-			if (chunk != nullptr) {
-				// On appelle la fonction lourde sur le thread secondaire
-				ChunkData data = chunk->buildMeshCPU();
+            // 2. On verrouille juste pour récupérer le pointeur et dire "Je travaille dessus"
+            {
+                std::lock_guard<std::recursive_mutex> lock(chunkMutex);
+                chunk = getChunk(coords.first, coords.second);
+                if (chunk) chunk->setGenerating(true); // <--- IMPORTANT
+            } // ICI on relâche le chunkMutex ! Le draw() peut reprendre.
 
-				std::lock_guard<std::mutex> lock(meshMutex);
-				readyMeshes.push(data);
-			}
-		}
-		else {
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
-		}
-	}
+            if (chunk != nullptr) {
+                // 3. Calcul LOURD fait sans bloquer le draw() !
+                ChunkData data = chunk->buildMeshCPU();
+
+                // 4. On a fini, on remet le flag à false
+                chunk->setGenerating(false);
+
+                // 5. On pousse le résultat
+                std::lock_guard<std::mutex> lock(meshMutex);
+                readyMeshes.push(data);
+            }
+        }
+        else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        }
+    }
 }
 
 void Generation::updateMainThread() {
 	// Cette fonction tourne sur le thread principal (OpenGL context)
 	std::lock_guard<std::mutex> lock(meshMutex);
-	while (!readyMeshes.empty()) {
+
+	// Limite à 2 uploads par frame pour garder le jeu fluide
+	int uploadCount = 0;
+
+	while (!readyMeshes.empty() && uploadCount < 2) { // <--- AJOUT DE LA LIMITE
 		ChunkData data = readyMeshes.front();
 		readyMeshes.pop();
 
-		// On lock le chunkMutex pour être sûr que personne ne delete le chunk
-		// pendant qu'on fait le uploadMeshToGPU
 		std::lock_guard<std::recursive_mutex> lockChunk(chunkMutex);
 		Chunk* chunk = getChunk(data.cx, data.cz);
 		if (chunk) {
 			chunk->uploadMeshToGPU(data);
 		}
+		uploadCount++; // <--- INCREMENTATION
 	}
 }
 
@@ -82,8 +96,8 @@ void Generation::draw(Camera& camera, bool wireframeMode) {
 	// VERROUILLE la liste pendant le dessin
 	std::lock_guard<std::recursive_mutex> lock(chunkMutex);
 
-	for (auto& chunk : chunks) {
-		if (!chunk) continue; // Sécurité supplémentaire
+	for (auto const& [key, chunk] : chunkMap) {
+		if (!chunk) continue;
 
 		int dx = chunk->getX() - playerChunkX;
 		int dz = chunk->getZ() - playerChunkZ;
@@ -103,7 +117,7 @@ void Generation::ChunkCreate(int cx, int cz) {
 	{
 		// VERROUILLE impérativement ici !
 		std::lock_guard<std::recursive_mutex> lock(chunkMutex);
-		chunks.push_back(newChunk);
+		chunkMap[{cx, cz}] = newChunk;
 	}
 
 	// Marquer les voisins comme "sales" pour boucher les trous
@@ -118,9 +132,9 @@ void Generation::ChunkCreate(int cx, int cz) {
 Chunk* Generation::getChunk(int cx, int cz)
 {
 	std::lock_guard<std::recursive_mutex> lock(chunkMutex); // On verrouille l'accès à la liste
-	for (auto& chunk : chunks) {
-		if (chunk->getX() == cx && chunk->getZ() == cz)
-			return chunk;
+	auto it = chunkMap.find({ cx, cz });
+	if (it != chunkMap.end()) {
+		return it->second;
 	}
 	return nullptr;
 }
@@ -148,13 +162,19 @@ void Generation::updateWorld(glm::vec3 playerPos) {
 	// 1. Suppression des chunks lointains
 	{
 		std::lock_guard<std::recursive_mutex> lock(chunkMutex);
-		for (auto it = chunks.begin(); it != chunks.end(); ) {
-			int dx = (*it)->getX() - playerChunkX;
-			int dz = (*it)->getZ() - playerChunkZ;
+		for (auto it = chunkMap.begin(); it != chunkMap.end(); ) {
+			Chunk* chunk = it->second;
+			int dx = chunk->getX() - playerChunkX;
+			int dz = chunk->getZ() - playerChunkZ;
 
 			if (dx * dx + dz * dz > GenerationDistance * GenerationDistance) {
-				delete* it; // Le destructeur de Chunk nettoie OpenGL
-				it = chunks.erase(it);
+				if (!chunk->isGenerating()) {
+					delete chunk;
+					it = chunkMap.erase(it);
+				}
+				else {
+					++it;
+				}
 			}
 			else {
 				++it;
@@ -173,13 +193,36 @@ void Generation::updateWorld(glm::vec3 playerPos) {
 }
 
 void Generation::Delete() {
-	// On verrouille pour éviter qu'un thread ne l'utilise pendant qu'on vide tout
+	// 1. On arrête d'abord le thread de calcul pour qu'il ne touche plus à rien
+	stop();
+
+	// 2. On verrouille pour la forme (même si le thread est stoppé)
 	std::lock_guard<std::recursive_mutex> lock(chunkMutex);
 
-	for (auto chunk : chunks) {
-		if (chunk != nullptr) {
-			delete chunk;
+	// 3. On vide les files d'attente pour éviter que des données 
+	// fantômes ne soient traitées au redémarrage
+	{
+		std::lock_guard<std::mutex> mLock(meshMutex);
+		std::queue<std::pair<int, int>> emptyReq;
+		std::swap(meshRequests, emptyReq);
+
+		std::queue<ChunkData> emptyReady;
+		std::swap(readyMeshes, emptyReady);
+	}
+
+	// 4. On supprime les objets Chunk proprement
+	// Si tu utilises std::map :
+	for (auto& pair : chunkMap) {
+		if (pair.second != nullptr) {
+			delete pair.second;
 		}
 	}
+	chunkMap.clear();
+
+	/* Si tu es encore en std::vector :
+	for (auto chunk : chunks) {
+		if (chunk != nullptr) delete chunk;
+	}
 	chunks.clear();
+	*/
 }

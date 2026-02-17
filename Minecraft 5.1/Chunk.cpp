@@ -254,3 +254,13 @@ bool Chunk::shouldRenderFace(int x, int y, int z) const
 
     return m_world->getBlock(worldX, y, worldZ) == 0;
 }
+
+void Chunk::setGenerating(bool value)
+{
+    m_isGenerated = value;
+}
+
+bool Chunk::isGenerating()
+{
+    return m_isGenerated;
+}

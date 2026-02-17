@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <glad/glad.h>
+#include <atomic>
 
 
 class VAO;
@@ -57,6 +58,10 @@ public:
     int getX() const { return m_xChunk; }
     int getZ() const { return m_yChunk; }
 
+    void setGenerating(bool value);
+
+    bool isGenerating();
+
 private:
     // Structure interne pour un bloc (économise la mémoire)
     struct Block {
@@ -91,6 +96,8 @@ private:
     EBO* m_ebo;
     Shader* m_shaderProgram;
     Texture* m_texture;
+
+    std::atomic<bool> m_isGenerating{ false };
 
     // --- Fonctions utilitaires internes (Helper) ---
 
