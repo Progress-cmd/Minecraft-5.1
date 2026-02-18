@@ -20,8 +20,8 @@ protected:
     std::map<std::pair<int, int>, Chunk*> chunkMap;
 
     // On utilise RenderDistance pour le dessin et GenerationDistance pour la création
-    int RenderDistance = 6;
-    int GenerationDistance = 12;
+    int RenderDistance = 8;
+    int GenerationDistance = 10;
 
     // Multithreading
     std::thread worker;

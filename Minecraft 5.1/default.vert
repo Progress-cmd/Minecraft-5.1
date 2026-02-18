@@ -6,12 +6,14 @@ layout (location = 1) in vec2 aTex; // entrée de type vec2 qui utilise la dispos
 
 
 out vec2 texCoord; // défini une sortie
+out vec3 crntPos; // On envoie la position monde
 
 uniform mat4 camMatrix; // uniform des matrices qui composent la caméra
 uniform mat4 model; // AJOUT : Pour positionner le chunk
 
 void main()
 {
+   crntPos = vec3(model * vec4(aPos, 1.0)); // Calcul de la position dans le monde
    gl_Position = camMatrix * model * vec4(aPos, 1.0);
    texCoord = aTex; // affecte la valeur en sortie
 }

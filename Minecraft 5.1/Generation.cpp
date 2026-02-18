@@ -6,6 +6,14 @@ Generation::Generation()
 {
 	m_sharedShader = new Shader("default.vert", "default.frag");
 	m_sharedTexture = new Texture("bitmap.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
+
+	start();
+
+	// Mise à jour du monde
+	updateWorld({ 0, 128, 0});
+
+	// Transfert des données CPU -> GPU
+	updateMainThread();
 }
 
 Generation::~Generation() {
@@ -104,7 +112,7 @@ void Generation::draw(Camera& camera, bool wireframeMode) {
 
 		// On ne dessine que ce qui est dans la distance de rendu
 		if (dx * dx + dz * dz <= RenderDistance * RenderDistance) {
-			chunk->draw(camera, wireframeMode);
+			chunk->draw(camera, wireframeMode, RenderDistance);
 		}
 	}
 }
@@ -211,18 +219,10 @@ void Generation::Delete() {
 	}
 
 	// 4. On supprime les objets Chunk proprement
-	// Si tu utilises std::map :
 	for (auto& pair : chunkMap) {
 		if (pair.second != nullptr) {
 			delete pair.second;
 		}
 	}
 	chunkMap.clear();
-
-	/* Si tu es encore en std::vector :
-	for (auto chunk : chunks) {
-		if (chunk != nullptr) delete chunk;
-	}
-	chunks.clear();
-	*/
 }

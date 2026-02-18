@@ -204,15 +204,19 @@ void Chunk::uploadMeshToGPU(const ChunkData& data)
     m_indexCount = static_cast<int>(data.indices.size());
 }
 
-void Chunk::draw(Camera& camera, bool wireframeMode)
+void Chunk::draw(Camera& camera, bool wireframeMode, int maxGeneration)
 {
     if (!m_isGenerated || m_indexCount == 0) return;
 
     m_shaderProgram->Activate();
+    // Envoie la position de la caméra pour le calcul du brouillard
+    glUniform3f(glGetUniformLocation(m_shaderProgram->ID, "camPos"), camera.getPosition().x, camera.getPosition().y, camera.getPosition().z);
+    glUniform1i(glGetUniformLocation(m_shaderProgram->ID, "maxDistance"), maxGeneration);
     m_texture->Bind();
 
     // Mise à jour de la matrice caméra
-    // Assure-toi que les paramètres (FOV, near, far) correspondent à ta logique Camera.cpp
+    // On calcule la distance max : (Nombre de chunks * largeur) + une marge de sécurité
+    float maxViewDistance = (maxGeneration * 16.0f) + 32.0f;
     camera.Matrix(45.0f, 0.1f, 100.0f, *m_shaderProgram, "camMatrix");
 
     // Position du Chunk dans le monde (Model Matrix)

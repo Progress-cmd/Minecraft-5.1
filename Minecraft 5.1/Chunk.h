@@ -43,7 +43,7 @@ public:
     void uploadMeshToGPU(const ChunkData& data);
 
     // Affiche le chunk
-    void draw(Camera& camera, bool wireframeMode = false);
+    void draw(Camera& camera, bool wireframeMode = false, int maxGeneration = 8);
 
     // --- Gestion des Blocs ---
 

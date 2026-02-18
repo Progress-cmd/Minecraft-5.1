@@ -79,7 +79,6 @@ int main() {
 
 	Inputs inputsInit;
 	Generation generationInit;
-	generationInit.start();
 
 	Camera camera(width, height, glm::vec3(0.0f, 130.0f, 0.0f)); // création de l'objet caméra
 
