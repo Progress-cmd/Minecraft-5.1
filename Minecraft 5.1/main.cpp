@@ -26,7 +26,7 @@
 #include "Generation.h"
 #include "Inputs.h"
 #include "Polices.h"
-
+	
 
 
 // ======================================== //
@@ -78,7 +78,7 @@ int main() {
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) { Erreurs(2); return -1; } // vérifi que la librairie a bien tout chargée
 
 	Inputs inputsInit;
-	Generation generationInit;
+	Generation generationInit(495);
 
 	Camera camera(width, height, glm::vec3(0.0f, 130.0f, 0.0f)); // création de l'objet caméra
 
@@ -97,6 +97,9 @@ int main() {
 
 			start1 = now1;
 		}
+
+		glfwGetFramebufferSize(window, &width, &height);
+		glViewport(0, 0, width, height);
 
 		// ----- 3D -----
 		// Mise à jour du monde

@@ -4,6 +4,7 @@
 #include <vector>
 #include <glad/glad.h>
 #include <atomic>
+#include <glm.hpp>
 
 
 class VAO;
@@ -13,6 +14,7 @@ class Texture;
 class Shader;
 class Camera;
 class Generation;
+class Noise;
 
 
 struct ChunkData {
@@ -31,7 +33,7 @@ public:
     static constexpr int HEIGHT = 128;
     static constexpr int DEPTH = 16;
 
-    Chunk(int xChunk, int zChunk, Generation* world, Shader* m_sharedShader, Texture* m_sharedTexture);
+    Chunk(int xChunk, int zChunk, Generation* world, Shader* m_sharedShader, Texture* m_sharedTexture, Noise* m_sharedNoise);
     ~Chunk();
 
     // --- Gestion du Mesh et Rendu ---
@@ -52,15 +54,15 @@ public:
 
     // Marque le chunk pour régénération lors de la prochaine frame
     void markDirty();
-    bool isGenerated() const { return m_isGenerated; }
+
+    // Getters pour le Thread de Génération
+    void setBeingBuilt(bool status) { m_isBeingBuilt = status; }
+    bool isBeingBuilt() const { return m_isBeingBuilt; }
+    bool isReadyToDraw() const { return m_isReadyToDraw; }
 
     // --- Getters ---
     int getX() const { return m_xChunk; }
     int getZ() const { return m_yChunk; }
-
-    void setGenerating(bool value);
-
-    bool isGenerating();
 
 private:
     // Structure interne pour un bloc (économise la mémoire)
@@ -74,12 +76,17 @@ private:
     const int m_xChunk;
     const int m_yChunk;
 
+    // Degré de vallonnement
+    const int vallonnement = 50;
+
     // Pointeur vers le monde (pour accéder aux voisins)
     Generation* m_world;
 
     // État du chunk
     bool m_isDirty = true;      // Le mesh doit être mis à jour
-    bool m_isGenerated = false; // Le mesh a été uploadé au moins une fois
+
+    std::atomic<bool> m_isBeingBuilt{ false };  // Le CPU travaille
+    bool m_isReadyToDraw = false;               // Le GPU est prêt
 
     // Nombre d'indices
     int m_indexCount = 0;
@@ -96,6 +103,7 @@ private:
     EBO* m_ebo;
     Shader* m_shaderProgram;
     Texture* m_texture;
+    Noise* m_noise;
 
     std::atomic<bool> m_isGenerating{ false };
 

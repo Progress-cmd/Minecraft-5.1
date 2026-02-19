@@ -141,6 +141,7 @@
     <ClCompile Include="Generation.cpp" />
     <ClCompile Include="Inputs.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="perlinNoise.cpp" />
     <ClCompile Include="Polices.cpp" />
     <ClCompile Include="shaderClass.cpp" />
     <ClCompile Include="stb.cpp" />
@@ -160,6 +161,7 @@
     <ClInclude Include="EBO.h" />
     <ClInclude Include="Generation.h" />
     <ClInclude Include="Inputs.h" />
+    <ClInclude Include="perlinNoise.h" />
     <ClInclude Include="Polices.h" />
     <ClInclude Include="shaderClass.h" />
     <ClInclude Include="Texture.h" />

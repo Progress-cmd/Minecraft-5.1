@@ -2,10 +2,11 @@
 #include "Camera.h"
 #include "Texture.h"
 
-Generation::Generation()
+Generation::Generation(int seed)
 {
 	m_sharedShader = new Shader("default.vert", "default.frag");
 	m_sharedTexture = new Texture("bitmap.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
+	m_sharedNoise = new Noise(seed);
 
 	start();
 
@@ -21,6 +22,7 @@ Generation::~Generation() {
 	Delete();
 	if (m_sharedShader) { m_sharedShader->Delete(); delete m_sharedShader; }
 	if (m_sharedTexture) { m_sharedTexture->Delete(); delete m_sharedTexture; }
+	//if (m_sharedNoise) { m_sharedNoise->Delete(); delete m_sharedNoise; }
 }
 
 void Generation::start() {
@@ -48,25 +50,20 @@ void Generation::workerLoop() {
 				found = true;
 			}
 		}
-
+			
 		if (found) {
-			Chunk* chunk = nullptr;
+			Chunk* chunk = getChunk(coords.first, coords.second);
+			if (chunk) {
+				// ÉTAPE A : On prévient que le CPU travaille
+				chunk->setBeingBuilt(true);
 
-			// 2. On verrouille juste pour récupérer le pointeur et dire "Je travaille dessus"
-			{
-				std::lock_guard<std::recursive_mutex> lock(chunkMutex);
-				chunk = getChunk(coords.first, coords.second);
-				if (chunk) chunk->setGenerating(true); // <--- IMPORTANT
-			} // ICI on relâche le chunkMutex ! Le draw() peut reprendre.
-
-			if (chunk != nullptr) {
-				// 3. Calcul LOURD fait sans bloquer le draw() !
+				// ÉTAPE B : Calcul lourd (buildMeshCPU)
 				ChunkData data = chunk->buildMeshCPU();
 
-				// 4. On a fini, on remet le flag à false
-				chunk->setGenerating(false);
+				// ÉTAPE C : On a fini le calcul CPU
+				chunk->setBeingBuilt(false);
 
-				// 5. On pousse le résultat
+				// ÉTAPE D : On envoie les données vers la file d'attente
 				std::lock_guard<std::mutex> lock(meshMutex);
 				readyMeshes.push(data);
 			}
@@ -98,8 +95,8 @@ void Generation::updateMainThread() {
 }
 
 void Generation::draw(Camera& camera, bool wireframeMode) {
-	int playerChunkX = floor(camera.getPosition().x / 16.0f);
-	int playerChunkZ = floor(camera.getPosition().z / 16.0f);
+	int playerChunkX = (int)floor(camera.getPosition().x / 16.0f);
+	int playerChunkZ = (int)floor(camera.getPosition().z / 16.0f);
 
 	// VERROUILLE la liste pendant le dessin
 	std::lock_guard<std::recursive_mutex> lock(chunkMutex);
@@ -120,7 +117,7 @@ void Generation::draw(Camera& camera, bool wireframeMode) {
 void Generation::ChunkCreate(int cx, int cz) {
 	if (getChunk(cx, cz)) return;
 
-	Chunk* newChunk = new Chunk(cx, cz, this, m_sharedShader, m_sharedTexture);
+	Chunk* newChunk = new Chunk(cx, cz, this, m_sharedShader, m_sharedTexture, m_sharedNoise);
 
 	{
 		// VERROUILLE impérativement ici !
@@ -176,12 +173,13 @@ void Generation::updateWorld(glm::vec3 playerPos) {
 			int dz = chunk->getZ() - playerChunkZ;
 
 			if (dx * dx + dz * dz > GenerationDistance * GenerationDistance) {
-				if (!chunk->isGenerating()) {
+				// On vérifie que le thread CPU n'est pas en train de build ce chunk
+				if (!chunk->isBeingBuilt()) {
 					delete chunk;
 					it = chunkMap.erase(it);
 				}
 				else {
-					++it;
+					++it; // On attend la prochaine frame pour le supprimer
 				}
 			}
 			else {

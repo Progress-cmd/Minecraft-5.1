@@ -5,6 +5,7 @@
 #include "VBO.h"
 #include "EBO.h"
 #include "Camera.h"
+#include "perlinNoise.h"
 
 #include <map>
 #include <array>
@@ -44,17 +45,21 @@ static const std::map<int, std::array<int, 3>> BLOCK_TYPES =
 };
 
 
-Chunk::Chunk(int xChunk, int zChunk, Generation* world, Shader* m_sharedShader, Texture* m_sharedTexture) : m_xChunk(xChunk), m_yChunk(zChunk), m_world(world), m_shaderProgram(m_sharedShader), m_texture(m_sharedTexture)
+Chunk::Chunk(int xChunk, int zChunk, Generation* world, Shader* m_sharedShader, Texture* m_sharedTexture, Noise* m_sharedNoise) : m_xChunk(xChunk), m_yChunk(zChunk), m_world(world), m_shaderProgram(m_sharedShader), m_texture(m_sharedTexture), m_noise(m_sharedNoise)
 {
     // 1. Initialisation du vecteur de blocs
     // On redimensionne le vecteur pour contenir tous les blocs du chunk (16*128*16)
-    m_blocks.resize(WIDTH * HEIGHT * DEPTH);
+    m_blocks.assign(WIDTH * HEIGHT * DEPTH, {0});
 
-    // Initialisation basique (tout en Dirt pour l'instant, comme ton ancien code)
-    for (int i = 0; i < m_blocks.size(); i++) {
-        m_blocks[i].type = 1;
+    for (int k = 0; k < DEPTH; ++k) {
+        for (int i = 0; i < WIDTH; ++i) {
+            int heightLimit = (int)m_noise->getValue(m_xChunk * WIDTH + i, m_yChunk * DEPTH + k);
+            for (int j = 0; j <= heightLimit && j < HEIGHT; ++j) {
+                m_blocks[getIndex(i, j, k)].type = 1;
+            }
+        }
     }
-
+    
     m_vao = new VAO();
     m_vao->Bind();
 
@@ -178,13 +183,8 @@ void Chunk::addFaceGeometry(std::vector<GLfloat>& vertices, std::vector<GLuint>&
 
 void Chunk::uploadMeshToGPU(const ChunkData& data)
 {
+    if(data.vertices.empty()) return;
     m_vao->Bind();
-
-    // Mise à jour du VBO
-    // Note: Dans ton code VBO.h, assure-toi d'avoir une méthode comme glBufferData
-    // ou utilise directement les commandes OpenGL si ta classe VBO est limitée.
-    // Ici je suppose que VBO a un constructeur ou une méthode update.
-    // Comme on a initialisé VBO avec nullptr, on doit re-bind et envoyer les data.
 
     m_vbo->Bind();
     glBufferData(GL_ARRAY_BUFFER, data.vertices.size() * sizeof(GLfloat), data.vertices.data(), GL_STATIC_DRAW);
@@ -196,17 +196,17 @@ void Chunk::uploadMeshToGPU(const ChunkData& data)
     m_vao->LinkAttrib(*m_vbo, 0, 3, GL_FLOAT, 5 * sizeof(float), (void*)0);
     m_vao->LinkAttrib(*m_vbo, 1, 2, GL_FLOAT, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 
+    m_indexCount = static_cast<int>(data.indices.size());
+    m_isReadyToDraw = true; // AUTORISATION DE DESSINER
+
     m_vao->Unbind();
     m_vbo->Unbind();
     m_ebo->Unbind();
-
-    m_isGenerated = true;
-    m_indexCount = static_cast<int>(data.indices.size());
 }
 
 void Chunk::draw(Camera& camera, bool wireframeMode, int maxGeneration)
 {
-    if (!m_isGenerated || m_indexCount == 0) return;
+    if (!m_isReadyToDraw || m_indexCount == 0) return;
 
     m_shaderProgram->Activate();
     // Envoie la position de la caméra pour le calcul du brouillard
@@ -215,9 +215,7 @@ void Chunk::draw(Camera& camera, bool wireframeMode, int maxGeneration)
     m_texture->Bind();
 
     // Mise à jour de la matrice caméra
-    // On calcule la distance max : (Nombre de chunks * largeur) + une marge de sécurité
-    float maxViewDistance = (maxGeneration * 16.0f) + 32.0f;
-    camera.Matrix(45.0f, 0.1f, 100.0f, *m_shaderProgram, "camMatrix");
+    camera.Matrix(90.0f, 0.1f, 100.0f, *m_shaderProgram, "camMatrix");
 
     // Position du Chunk dans le monde (Model Matrix)
     // Ici, le VBO contient des coordonnées locales (0..15). 
@@ -257,14 +255,4 @@ bool Chunk::shouldRenderFace(int x, int y, int z) const
     int worldZ = m_yChunk * DEPTH + z;
 
     return m_world->getBlock(worldX, y, worldZ) == 0;
-}
-
-void Chunk::setGenerating(bool value)
-{
-    m_isGenerated = value;
-}
-
-bool Chunk::isGenerating()
-{
-    return m_isGenerated;
 }

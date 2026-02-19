@@ -8,7 +8,9 @@
 #include <thread>
 #include <map>
 #include <glm.hpp>
+
 #include "Chunk.h"
+#include "perlinNoise.h"
 
 
 class Generation
@@ -16,6 +18,7 @@ class Generation
 protected:
     Shader* m_sharedShader;
     Texture* m_sharedTexture;
+    Noise* m_sharedNoise;
 
     std::map<std::pair<int, int>, Chunk*> chunkMap;
 
@@ -34,7 +37,7 @@ protected:
     void workerLoop();
 
 public:
-    Generation();
+    Generation(int seed);
     ~Generation(); // Important pour stopper le thread proprement
 
     void start();
