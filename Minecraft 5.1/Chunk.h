@@ -63,7 +63,7 @@ public:
 
     // --- Getters ---
     int getX() const { return m_xChunk; }
-    int getZ() const { return m_yChunk; }
+    int getZ() const { return m_zChunk; }
 
 private:
     // Structure interne pour un bloc (économise la mémoire)
@@ -75,7 +75,7 @@ private:
 
     // Coordonnées du chunk dans le monde
     const int m_xChunk;
-    const int m_yChunk;
+    const int m_zChunk;
 
     // Pointeur vers le monde (pour accéder aux voisins)
     Generation* m_world;

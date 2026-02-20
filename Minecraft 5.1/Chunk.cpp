@@ -18,18 +18,18 @@
 // On définit les 6 faces : PosX, NegX, PosY, NegY, PosZ, NegZ
 // Chaque face a 4 sommets (x, y, z)
 static const float STRIDE_VERTICES[6][4][3] = {
-    // FACE_POS_X (+X)
-    {{0.5f, -0.5f, -0.5f}, {0.5f,  0.5f, -0.5f}, {0.5f,  0.5f,  0.5f}, {0.5f, -0.5f,  0.5f}},
-    // FACE_NEG_X (-X)
-    {{-0.5f, -0.5f,  0.5f}, {-0.5f,  0.5f,  0.5f}, {-0.5f,  0.5f, -0.5f}, {-0.5f, -0.5f, -0.5f}},
-    // FACE_POS_Y (+Y - TOP)
-    {{-0.5f,  0.5f, -0.5f}, {-0.5f,  0.5f,  0.5f}, {0.5f,  0.5f,  0.5f}, {0.5f,  0.5f, -0.5f}},
+    // FACE_POS_X (+X) : On fixe X à 0.5, on fait varier Y et Z
+    {{0.5f, -0.5f,  0.5f}, {0.5f,  0.5f,  0.5f}, {0.5f,  0.5f, -0.5f}, {0.5f, -0.5f, -0.5f}},
+    // FACE_NEG_X (-X) : On fixe X à -0.5
+    {{-0.5f, -0.5f, -0.5f}, {-0.5f,  0.5f, -0.5f}, {-0.5f,  0.5f,  0.5f}, {-0.5f, -0.5f,  0.5f}},
+    // FACE_POS_Y (+Y - TOP) : On fixe Y à 0.5, on fait varier X et Z
+    {{-0.5f,  0.5f,  0.5f}, { 0.5f,  0.5f,  0.5f}, { 0.5f,  0.5f, -0.5f}, {-0.5f,  0.5f, -0.5f}},
     // FACE_NEG_Y (-Y - BOTTOM)
-    {{-0.5f, -0.5f,  0.5f}, {0.5f, -0.5f,  0.5f}, {0.5f, -0.5f, -0.5f}, {-0.5f, -0.5f, -0.5f}},
-    // FACE_POS_Z (+Z)
-    {{0.5f, -0.5f,  0.5f}, {0.5f,  0.5f,  0.5f}, {-0.5f,  0.5f,  0.5f}, {-0.5f, -0.5f,  0.5f}},
-    // FACE_NEG_Z (-Z)
-    {{-0.5f, -0.5f, -0.5f}, {-0.5f,  0.5f, -0.5f}, {0.5f,  0.5f, -0.5f}, {0.5f, -0.5f, -0.5f}}
+    {{-0.5f, -0.5f, -0.5f}, { 0.5f, -0.5f, -0.5f}, { 0.5f, -0.5f,  0.5f}, {-0.5f, -0.5f,  0.5f}},
+    // FACE_POS_Z (+Z) : On fixe Z à 0.5
+    {{-0.5f, -0.5f,  0.5f}, { 0.5f, -0.5f,  0.5f}, { 0.5f,  0.5f,  0.5f}, {-0.5f,  0.5f,  0.5f}},
+    // FACE_NEG_Z (-Z) : On fixe Z à -0.5
+    {{ 0.5f, -0.5f, -0.5f}, {-0.5f, -0.5f, -0.5f}, {-0.5f,  0.5f, -0.5f}, { 0.5f,  0.5f, -0.5f}}
 };
 
 // Les UVs de base pour une face (0 à 1 en local sur la texture)
@@ -46,22 +46,51 @@ static const std::map<int, std::array<int, 3>> BLOCK_TYPES =
 };
 
 
-Chunk::Chunk(int xChunk, int zChunk, Generation* world, Shader* m_sharedShader, Texture* m_sharedTexture, Noise* m_sharedNoise) : m_xChunk(xChunk), m_yChunk(zChunk), m_world(world), m_shaderProgram(m_sharedShader), m_texture(m_sharedTexture), m_noise(m_sharedNoise)
+Chunk::Chunk(int xChunk, int zChunk, Generation* world, Shader* m_sharedShader, Texture* m_sharedTexture, Noise* m_sharedNoise) : m_xChunk(xChunk), m_zChunk(zChunk), m_world(world), m_shaderProgram(m_sharedShader), m_texture(m_sharedTexture), m_noise(m_sharedNoise)
 {
     // 1. Initialisation du vecteur de blocs
     // On redimensionne le vecteur pour contenir tous les blocs du chunk (16*128*16)
     m_blocks.assign(WIDTH * HEIGHT * DEPTH, {0});
 
-    int type = 0;
+    // --- ÉTAPE 1 : OPTIMISATION DE LA HEIGHTMAP (2D) ---
+    // On calcule la hauteur du terrain uniquement à la surface (16x16 fois au lieu de 32768 fois)
+    int heightMap[WIDTH][DEPTH];
+
+    const TerrainSettings& settings = m_world->getSettings();
 
     for (int k = 0; k < DEPTH; ++k) {
         for (int i = 0; i < WIDTH; ++i) {
-            int heightLimit = (int)m_noise->getValue(m_xChunk * WIDTH + i, m_yChunk * DEPTH + k);
-            for (int j = 0; j <= heightLimit && j < HEIGHT; ++j) {
-                if (j < (heightLimit - 6)) { type = 3; }
-                else if (j < (heightLimit)) { type = 1; }
-                else { type = 2; }
-                m_blocks[getIndex(i, j, k)].type = type;
+            float absoluteX = (float)(m_xChunk * WIDTH + i);
+            float absoluteZ = (float)(m_zChunk * DEPTH + k);
+
+            float noiseRaw = m_noise->getFractalNoise(
+                absoluteX * settings.frequency,
+                absoluteZ * settings.frequency,
+                settings.octaves,
+                settings.persistence,
+                settings.lacunarity
+            );
+            heightMap[i][k] = (int)((noiseRaw + 1.0f) * 0.5f * settings.amplitude);
+        }
+    }
+
+    // --- ÉTAPE 2 : REMPLISSAGE DES BLOCS (3D) ---
+    // Maintenant on monte en Y en utilisant simplement la valeur pré-calculée
+    for (int j = 0; j < HEIGHT; ++j) {           // Y en premier (pour le cache mémoire)
+        for (int k = 0; k < DEPTH; ++k) {        // Z
+            for (int i = 0; i < WIDTH; ++i) {    // X en dernier
+
+                int hauteurFinale = heightMap[i][k];
+                int type = 0;
+
+                if (j <= hauteurFinale) {
+                    if (j < (hauteurFinale - 6)) type = 3; // Roche
+                    else if (j < hauteurFinale)  type = 1; // Terre
+                    else                         type = 2; // Herbe
+
+                    m_blocks[getIndex(i, j, k)].type = type;
+                }
+                // Pas besoin du else (type = 0), car m_blocks.assign a déjà mis tout à l'air !
             }
         }
     }
@@ -77,7 +106,7 @@ Chunk::Chunk(int xChunk, int zChunk, Generation* world, Shader* m_sharedShader, 
     m_vbo->Unbind();
     m_ebo->Unbind();
 
-    std::cout << "Generation: Chunk " << m_xChunk << ", " << m_yChunk << " genere" << std::endl;
+    std::cout << "Generation: Chunk " << m_xChunk << ", " << m_zChunk << " genere" << std::endl;
 }
 
 Chunk::~Chunk()
@@ -120,11 +149,11 @@ ChunkData Chunk::buildMeshCPU()
     m_isDirty = false;
     ChunkData data;
     data.cx = m_xChunk;
-    data.cz = m_yChunk;
+    data.cz = m_zChunk;
 
-    for (int x = 0; x < WIDTH; x++) {
-        for (int y = 0; y < HEIGHT; y++) {
-            for (int z = 0; z < DEPTH; z++) {
+    for (int y = 0; y < HEIGHT; y++) {           // Y en premier
+        for (int z = 0; z < DEPTH; z++) {       // Z
+            for (int x = 0; x < WIDTH; x++) {   // X en dernier
                 uint8_t type = getBlock(x, y, z);
                 if (type == 0) continue;
 
@@ -227,7 +256,7 @@ void Chunk::draw(Camera& camera, bool wireframeMode, int maxGeneration)
     // Ici, le VBO contient des coordonnées locales (0..15). 
     // On doit déplacer le chunk à sa position m_xChunk * 16
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(m_xChunk * WIDTH, 0, m_yChunk * DEPTH));
+    model = glm::translate(model, glm::vec3(m_xChunk * WIDTH, 0, m_zChunk * DEPTH));
     glUniformMatrix4fv(glGetUniformLocation(m_shaderProgram->ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
     m_vao->Bind();
@@ -258,7 +287,7 @@ bool Chunk::shouldRenderFace(int x, int y, int z) const
     // 3. Si on est sur le bord du chunk, on doit demander au MONDE (m_world)
     // car le voisin se trouve dans un AUTRE chunk.
     int worldX = m_xChunk * WIDTH + x;
-    int worldZ = m_yChunk * DEPTH + z;
+    int worldZ = m_zChunk * DEPTH + z;
 
     return m_world->getBlock(worldX, y, worldZ) == 0;
 }
