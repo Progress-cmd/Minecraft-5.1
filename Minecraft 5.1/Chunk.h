@@ -115,6 +115,8 @@ private:
     void addFaceGeometry(std::vector<GLfloat>& vertices, std::vector<GLuint>& indices,
         int x, int y, int z, int faceDir, int blockType);
 
+    int getAO(int x, int y, int z, glm::ivec3 plane1, glm::ivec3 plane2, glm::ivec3 corner);
+
     // Récupère l'index 1D depuis les coordonnées 3D locales
     inline int getIndex(int x, int y, int z) const {
         return x + WIDTH * (z + DEPTH * y);

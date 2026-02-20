@@ -8,6 +8,8 @@ in vec2 texCoord; // défini une entrée
 
 in vec3 crntPos; // Position reçue du vertex shader
 
+in float vAO; // luminosité reçu 
+
 
 uniform sampler2D tex0; // indique l'unité de texture à utiliser
 
@@ -42,6 +44,12 @@ void main()
     float fogFactor = clamp((dist - fogNear) / (fogFar - fogNear), 0.0, 1.0);
     fogFactor = smoothstep(0.0, 1.0, fogFactor);
 
+    // On applique l'AO sur la couleur du bloc UNIQUEMENT
+    vec3 finalBlockColor = texColor.rgb * vAO;
+
+    // On mélange la couleur du bloc (ombrée) avec la couleur du ciel (lumineuse)
+    vec3 finalRGB = mix(finalBlockColor, skyColor.rgb, fogFactor);
+
     // 4. Mélange final
-    FragColor = vec4(mix(texColor.rgb, skyColor.rgb, fogFactor), texColor.a);
+    FragColor = vec4(finalRGB, texColor.a);
 }

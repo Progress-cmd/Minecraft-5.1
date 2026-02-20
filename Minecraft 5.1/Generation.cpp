@@ -21,7 +21,7 @@ Generation::Generation(int seed)
 	// Transfert des données CPU -> GPU
 	updateMainThread();
 
-	std::cout << "Generation: Initialisation de la generation du monde" << std::endl;
+	std::cout << "Generation: Initialisation de la generation du monde avec la seed " << seed << std::endl;
 }
 
 Generation::~Generation() {

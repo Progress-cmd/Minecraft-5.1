@@ -174,7 +174,7 @@ void Chunk::addFaceGeometry(std::vector<GLfloat>& vertices, std::vector<GLuint>&
 {
     // 1. Calculer l'index de départ pour les indices
     // (vertices contient 5 floats par sommet : x, y, z, u, v)
-    GLuint startIndex = static_cast<GLuint>(vertices.size() / 5);
+    GLuint startIndex = static_cast<GLuint>(vertices.size() / 6);
 
     // 2. Calculer l'ID de la Texture
     // faceDir: 0=Right, 1=Left (Side), 2=Top, 3=Bottom, 4=Front, 5=Back (Side)
@@ -193,6 +193,47 @@ void Chunk::addFaceGeometry(std::vector<GLfloat>& vertices, std::vector<GLuint>&
     float uMin = (texID % 16) / 16.0f;
     float vMin = 1.0f - ((texID / 16) / 16.0f) - 0.0625f; // Inversion Y standard OpenGL
 
+    // On prépare les directions pour l'AO selon la face (exemple pour Face_POS_Y)
+    // Pour chaque sommet (n=0..3), on définit les 3 voisins à tester
+    int ao[4];
+
+    if (faceDir == 0) { // +X (Right)
+        ao[0] = getAO(x + 1, y, z, { 0,0,1 }, { 0,-1,0 }, { 0,-1,1 });
+        ao[1] = getAO(x + 1, y, z, { 0,0,1 }, { 0, 1,0 }, { 0, 1,1 });
+        ao[2] = getAO(x + 1, y, z, { 0,0,-1 }, { 0, 1,0 }, { 0, 1,-1 });
+        ao[3] = getAO(x + 1, y, z, { 0,0,-1 }, { 0,-1,0 }, { 0,-1,-1 });
+    }
+    else if (faceDir == 1) { // -X (Left)
+        ao[0] = getAO(x - 1, y, z, { 0,0,-1 }, { 0,-1,0 }, { 0,-1,-1 });
+        ao[1] = getAO(x - 1, y, z, { 0,0,-1 }, { 0, 1,0 }, { 0, 1,-1 });
+        ao[2] = getAO(x - 1, y, z, { 0,0,1 }, { 0, 1,0 }, { 0, 1,1 });
+        ao[3] = getAO(x - 1, y, z, { 0,0,1 }, { 0,-1,0 }, { 0,-1,1 });
+    }
+    else if (faceDir == 2) { // +Y (Top)
+        ao[0] = getAO(x, y + 1, z, { -1,0,0 }, { 0,0,1 }, { -1,0,1 });
+        ao[1] = getAO(x, y + 1, z, { 1,0,0 }, { 0,0,1 }, { 1,0,1 });
+        ao[2] = getAO(x, y + 1, z, { 1,0,0 }, { 0,0,-1 }, { 1,0,-1 });
+        ao[3] = getAO(x, y + 1, z, { -1,0,0 }, { 0,0,-1 }, { -1,0,-1 });
+    }
+    else if (faceDir == 3) { // -Y (Bottom)
+        ao[0] = getAO(x, y - 1, z, { -1,0,0 }, { 0,0,-1 }, { -1,0,-1 });
+        ao[1] = getAO(x, y - 1, z, { 1,0,0 }, { 0,0,-1 }, { 1,0,-1 });
+        ao[2] = getAO(x, y - 1, z, { 1,0,0 }, { 0,0,1 }, { 1,0,1 });
+        ao[3] = getAO(x, y - 1, z, { -1,0,0 }, { 0,0,1 }, { -1,0,1 });
+    }
+    else if (faceDir == 4) { // +Z (Front)
+        ao[0] = getAO(x, y, z + 1, { -1,0,0 }, { 0,-1,0 }, { -1,-1,0 });
+        ao[1] = getAO(x, y, z + 1, { 1,0,0 }, { 0,-1,0 }, { 1,-1,0 });
+        ao[2] = getAO(x, y, z + 1, { 1,0,0 }, { 0, 1,0 }, { 1, 1,0 });
+        ao[3] = getAO(x, y, z + 1, { -1,0,0 }, { 0, 1,0 }, { -1, 1,0 });
+    }
+    else if (faceDir == 5) { // -Z (Back)
+        ao[0] = getAO(x, y, z - 1, { 1,0,0 }, { 0,-1,0 }, { 1,-1,0 });
+        ao[1] = getAO(x, y, z - 1, { -1,0,0 }, { 0,-1,0 }, { -1,-1,0 });
+        ao[2] = getAO(x, y, z - 1, { -1,0,0 }, { 0, 1,0 }, { -1, 1,0 });
+        ao[3] = getAO(x, y, z - 1, { 1,0,0 }, { 0, 1,0 }, { 1, 1,0 });
+    }
+
     // 3. Ajouter les 4 sommets de la face
     for (int n = 0; n < 4; n++) {
         // Position (Modèle + Monde)
@@ -205,15 +246,32 @@ void Chunk::addFaceGeometry(std::vector<GLfloat>& vertices, std::vector<GLuint>&
         float vOffset = STRIDE_UVS[n][1] * 0.0625f;
         vertices.push_back(uMin + uOffset);
         vertices.push_back(vMin + vOffset);
+
+        // Conversion de 0..3 vers 0.4..1.0 pour un ombrage doux
+        float aoFactor = 0.4f + (ao[n] / 3.0f) * 0.6f;
+        vertices.push_back(aoFactor);
     }
 
     // 4. Ajouter les indices (2 triangles pour faire un carré)
-    indices.push_back(startIndex + 0);
-    indices.push_back(startIndex + 1);
-    indices.push_back(startIndex + 2);
-    indices.push_back(startIndex + 2);
-    indices.push_back(startIndex + 3);
-    indices.push_back(startIndex + 0);
+    // On remplace ta partie indices par ceci :
+    if (ao[0] + ao[2] < ao[1] + ao[3]) {
+        // Diagonale inversée
+        indices.push_back(startIndex + 1);
+        indices.push_back(startIndex + 2);
+        indices.push_back(startIndex + 3);
+        indices.push_back(startIndex + 3);
+        indices.push_back(startIndex + 0);
+        indices.push_back(startIndex + 1);
+    }
+    else {
+        // Diagonale standard
+        indices.push_back(startIndex + 0);
+        indices.push_back(startIndex + 1);
+        indices.push_back(startIndex + 2);
+        indices.push_back(startIndex + 2);
+        indices.push_back(startIndex + 3);
+        indices.push_back(startIndex + 0);
+    }
 }
 
 void Chunk::uploadMeshToGPU(const ChunkData& data)
@@ -227,9 +285,10 @@ void Chunk::uploadMeshToGPU(const ChunkData& data)
     m_ebo->Bind();
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.indices.size() * sizeof(GLuint), data.indices.data(), GL_STATIC_DRAW);
 
-    // Attributs : 0 = Pos (3 floats), 1 = UV (2 floats) -> Total stride = 5 floats
-    m_vao->LinkAttrib(*m_vbo, 0, 3, GL_FLOAT, 5 * sizeof(float), (void*)0);
-    m_vao->LinkAttrib(*m_vbo, 1, 2, GL_FLOAT, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    // Attributs : 0 = Pos (3 floats), 1 = UV (2 floats), 2 = AO (1 float) -> Total stride = 6 floats
+    m_vao->LinkAttrib(*m_vbo, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0);                   // Pos
+    m_vao->LinkAttrib(*m_vbo, 1, 2, GL_FLOAT, 6 * sizeof(float), (void*)(3 * sizeof(float))); // UV
+    m_vao->LinkAttrib(*m_vbo, 2, 1, GL_FLOAT, 6 * sizeof(float), (void*)(5 * sizeof(float))); // AO
 
     m_indexCount = static_cast<int>(data.indices.size());
     m_isReadyToDraw = true; // AUTORISATION DE DESSINER
@@ -290,4 +349,18 @@ bool Chunk::shouldRenderFace(int x, int y, int z) const
     int worldZ = m_zChunk * DEPTH + z;
 
     return m_world->getBlock(worldX, y, worldZ) == 0;
+}
+
+int Chunk::getAO(int x, int y, int z, glm::ivec3 plane1, glm::ivec3 plane2, glm::ivec3 corner) {
+    // ON CONVERTIT EN COORDONNÉES MONDE
+    int wx = m_xChunk * WIDTH + x;
+    int wz = m_zChunk * DEPTH + z;
+
+    // On demande au monde en utilisant les coordonnées absolues
+    bool s1 = m_world->getBlock(wx + plane1.x, y + plane1.y, wz + plane1.z) > 0;
+    bool s2 = m_world->getBlock(wx + plane2.x, y + plane2.y, wz + plane2.z) > 0;
+    bool c = m_world->getBlock(wx + corner.x, y + corner.y, wz + corner.z) > 0;
+
+    if (s1 && s2) return 0;
+    return 3 - (s1 + s2 + c);
 }
