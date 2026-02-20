@@ -12,6 +12,7 @@
 #include <glm.hpp>
 #include <gtc/matrix_transform.hpp>
 #include <gtc/type_ptr.hpp>
+#include <iostream>
 
 
 // On définit les 6 faces : PosX, NegX, PosY, NegY, PosZ, NegZ
@@ -51,11 +52,16 @@ Chunk::Chunk(int xChunk, int zChunk, Generation* world, Shader* m_sharedShader, 
     // On redimensionne le vecteur pour contenir tous les blocs du chunk (16*128*16)
     m_blocks.assign(WIDTH * HEIGHT * DEPTH, {0});
 
+    int type = 0;
+
     for (int k = 0; k < DEPTH; ++k) {
         for (int i = 0; i < WIDTH; ++i) {
             int heightLimit = (int)m_noise->getValue(m_xChunk * WIDTH + i, m_yChunk * DEPTH + k);
             for (int j = 0; j <= heightLimit && j < HEIGHT; ++j) {
-                m_blocks[getIndex(i, j, k)].type = 1;
+                if (j < (heightLimit - 6)) { type = 3; }
+                else if (j < (heightLimit)) { type = 1; }
+                else { type = 2; }
+                m_blocks[getIndex(i, j, k)].type = type;
             }
         }
     }
@@ -67,12 +73,11 @@ Chunk::Chunk(int xChunk, int zChunk, Generation* world, Shader* m_sharedShader, 
     m_vbo = new VBO(nullptr, 0); // Taille 0 pour l'instant
     m_ebo = new EBO(nullptr, 0);
 
-    // Lier la texture au shader une fois pour toutes
-    m_texture->texUnit(*m_shaderProgram, "tex0", 0);
-
     m_vao->Unbind();
     m_vbo->Unbind();
     m_ebo->Unbind();
+
+    std::cout << "Generation: Chunk " << m_xChunk << ", " << m_yChunk << " genere" << std::endl;
 }
 
 Chunk::~Chunk()
@@ -112,6 +117,7 @@ void Chunk::markDirty()
 
 ChunkData Chunk::buildMeshCPU()
 {
+    m_isDirty = false;
     ChunkData data;
     data.cx = m_xChunk;
     data.cz = m_yChunk;
@@ -215,7 +221,7 @@ void Chunk::draw(Camera& camera, bool wireframeMode, int maxGeneration)
     m_texture->Bind();
 
     // Mise à jour de la matrice caméra
-    camera.Matrix(90.0f, 0.1f, 100.0f, *m_shaderProgram, "camMatrix");
+    camera.Matrix(90.0f, 0.1f, float(maxGeneration * 16 + 16), *m_shaderProgram, "camMatrix");
 
     // Position du Chunk dans le monde (Model Matrix)
     // Ici, le VBO contient des coordonnées locales (0..15). 

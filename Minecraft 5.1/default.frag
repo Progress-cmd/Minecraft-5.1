@@ -24,11 +24,18 @@ void main()
     if(texColor.a < 0.1) discard; // Transparence basique
 
     // 1. Calcul de la distance réelle (circulaire)
-    float dist = distance(camPos, crntPos);
+    vec2 diff = abs(crntPos.xz - camPos.xz);
+    float dist = max(diff.x, diff.y); // Brouillard carré
+
+    // FIX : On définit la limite stricte
+    float limit = float(maxDistance * 16);
 
     // 2. Paramètres du brouillard
-    float fogNear = (maxDistance * 16) * 0.75; // Le brouillard commence à
-    float fogFar = (maxDistance * 16) * 0.90   ;  // Le brouillard est total à
+    // Le brouillard commence à 40% et finit à 95% de la distance max
+    // On finit à 95% pour être SÛR que c'est opaque avant la coupure brutale
+    float fogNear = limit * 0.4; 
+    float fogFar = limit * 0.95;
+
     vec4 skyColor = vec4(0.07, 0.13, 0.17, 1.0); // La même couleur que ton glClearColor
 
     // 3. Calcul du facteur de mélange (entre 0.0 et 1.0)

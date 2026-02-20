@@ -38,7 +38,7 @@ Polices::Polices() : textShader("polices.vert", "polices.frag"), textVBO(sizeof(
             texture,
             glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
             glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-            face->glyph->advance.x
+            unsigned int(face->glyph->advance.x)
         };
         Characters.insert(std::pair<char, Character>(c, character));
     }

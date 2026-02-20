@@ -2,10 +2,15 @@
 #include "Camera.h"
 #include "Texture.h"
 
+#include <iostream>
+
+
 Generation::Generation(int seed)
 {
 	m_sharedShader = new Shader("default.vert", "default.frag");
 	m_sharedTexture = new Texture("bitmap.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
+	// Lier la texture au shader une fois pour toutes
+	m_sharedTexture->texUnit(*m_sharedShader, "tex0", 0);
 	m_sharedNoise = new Noise(seed);
 
 	start();
@@ -15,6 +20,8 @@ Generation::Generation(int seed)
 
 	// Transfert des données CPU -> GPU
 	updateMainThread();
+
+	std::cout << "Generation: Initialisation de la generation du monde" << std::endl;
 }
 
 Generation::~Generation() {
@@ -22,7 +29,7 @@ Generation::~Generation() {
 	Delete();
 	if (m_sharedShader) { m_sharedShader->Delete(); delete m_sharedShader; }
 	if (m_sharedTexture) { m_sharedTexture->Delete(); delete m_sharedTexture; }
-	//if (m_sharedNoise) { m_sharedNoise->Delete(); delete m_sharedNoise; }
+	if (m_sharedNoise) { delete m_sharedNoise; }
 }
 
 void Generation::start() {
@@ -53,7 +60,7 @@ void Generation::workerLoop() {
 			
 		if (found) {
 			Chunk* chunk = getChunk(coords.first, coords.second);
-			if (chunk) {
+			if (chunk && chunk->isDirty()) {
 				// ÉTAPE A : On prévient que le CPU travaille
 				chunk->setBeingBuilt(true);
 
@@ -125,13 +132,22 @@ void Generation::ChunkCreate(int cx, int cz) {
 		chunkMap[{cx, cz}] = newChunk;
 	}
 
-	// Marquer les voisins comme "sales" pour boucher les trous
-	Chunk* neighbors[4] = { getChunk(cx - 1, cz), getChunk(cx + 1, cz), getChunk(cx, cz - 1), getChunk(cx, cz + 1) };
-	for (auto n : neighbors) if (n) n->markDirty();
-
-	// Demander la génération du mesh
+	// 1. On prépare la file d'attente
 	std::lock_guard<std::mutex> lock(meshMutex);
+
+	// 2. On demande la génération pour le NOUVEAU chunk
 	meshRequests.push({ cx, cz });
+
+	// 3. On prévient les voisins ET on les envoie au worker
+	Chunk* neighbors[4] = { getChunk(cx - 1, cz), getChunk(cx + 1, cz), getChunk(cx, cz - 1), getChunk(cx, cz + 1) };
+
+	for (auto n : neighbors) {
+		if (n) {
+			n->markDirty();
+			// Crucial : on demande au worker de recalculer le mesh du voisin
+			meshRequests.push({ n->getX(), n->getZ() });
+		}
+	}
 }
 
 Chunk* Generation::getChunk(int cx, int cz)

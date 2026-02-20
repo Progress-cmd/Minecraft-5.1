@@ -8,6 +8,7 @@ class Noise
 {
 public:
 	Noise(int seed);
+	~Noise();
 
 	float getValue(int x, int y);
 

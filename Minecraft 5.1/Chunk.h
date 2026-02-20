@@ -54,6 +54,7 @@ public:
 
     // Marque le chunk pour régénération lors de la prochaine frame
     void markDirty();
+    bool isDirty() { return m_isDirty; }
 
     // Getters pour le Thread de Génération
     void setBeingBuilt(bool status) { m_isBeingBuilt = status; }
@@ -75,9 +76,6 @@ private:
     // Coordonnées du chunk dans le monde
     const int m_xChunk;
     const int m_yChunk;
-
-    // Degré de vallonnement
-    const int vallonnement = 50;
 
     // Pointeur vers le monde (pour accéder aux voisins)
     Generation* m_world;
