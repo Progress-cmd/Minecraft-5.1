@@ -1,0 +1,366 @@
+#include "Chunk.h"
+#include "Generation.h"
+#include "Texture.h"
+#include "VAO.h"
+#include "VBO.h"
+#include "EBO.h"
+#include "Camera.h"
+#include "perlinNoise.h"
+
+#include <map>
+#include <array>
+#include <glm.hpp>
+#include <gtc/matrix_transform.hpp>
+#include <gtc/type_ptr.hpp>
+#include <iostream>
+
+
+// On d�finit les 6 faces : PosX, NegX, PosY, NegY, PosZ, NegZ
+// Chaque face a 4 sommets (x, y, z)
+static const float STRIDE_VERTICES[6][4][3] = {
+    // FACE_POS_X (+X) : On fixe X � 0.5, on fait varier Y et Z
+    {{0.5f, -0.5f,  0.5f}, {0.5f,  0.5f,  0.5f}, {0.5f,  0.5f, -0.5f}, {0.5f, -0.5f, -0.5f}},
+    // FACE_NEG_X (-X) : On fixe X � -0.5
+    {{-0.5f, -0.5f, -0.5f}, {-0.5f,  0.5f, -0.5f}, {-0.5f,  0.5f,  0.5f}, {-0.5f, -0.5f,  0.5f}},
+    // FACE_POS_Y (+Y - TOP) : On fixe Y � 0.5, on fait varier X et Z
+    {{-0.5f,  0.5f,  0.5f}, { 0.5f,  0.5f,  0.5f}, { 0.5f,  0.5f, -0.5f}, {-0.5f,  0.5f, -0.5f}},
+    // FACE_NEG_Y (-Y - BOTTOM)
+    {{-0.5f, -0.5f, -0.5f}, { 0.5f, -0.5f, -0.5f}, { 0.5f, -0.5f,  0.5f}, {-0.5f, -0.5f,  0.5f}},
+    // FACE_POS_Z (+Z) : On fixe Z � 0.5
+    {{ 0.5f, -0.5f,  0.5f}, { 0.5f,  0.5f,  0.5f}, {-0.5f,  0.5f,  0.5f}, {-0.5f, -0.5f,  0.5f}},
+    // FACE_NEG_Z (-Z) : On fixe Z � -0.5
+    {{-0.5f, -0.5f, -0.5f}, {-0.5f,  0.5f, -0.5f}, { 0.5f,  0.5f, -0.5f}, { 0.5f, -0.5f, -0.5f}}
+};
+
+// Les UVs de base pour une face (0 � 1 en local sur la texture)
+static const float STRIDE_UVS[4][2] = {
+    {0.0f, 0.0f}, {0.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, 0.0f}
+};
+
+static const std::map<int, std::array<int, 3>> BLOCK_TYPES =
+{   //id, {Up, Down, Sides}
+    {1, {0, 0, 0}},    // Dirt
+    {2, {1, 0, 2}},    // Grass
+    {3, {3, 3, 3}},    // Stone
+    {4, {4, 4, 4}}     // Wood
+};
+
+
+Chunk::Chunk(int xChunk, int zChunk, Generation* world, Shader* m_sharedShader, Texture* m_sharedTexture, Noise* m_sharedNoise) : m_xChunk(xChunk), m_zChunk(zChunk), m_world(world), m_shaderProgram(m_sharedShader), m_texture(m_sharedTexture), m_noise(m_sharedNoise)
+{
+    // 1. Initialisation du vecteur de blocs
+    // On redimensionne le vecteur pour contenir tous les blocs du chunk (16*128*16)
+    m_blocks.assign(WIDTH * HEIGHT * DEPTH, {0});
+
+    // --- �TAPE 1 : OPTIMISATION DE LA HEIGHTMAP (2D) ---
+    // On calcule la hauteur du terrain uniquement � la surface (16x16 fois au lieu de 32768 fois)
+    int heightMap[WIDTH][DEPTH];
+
+    const TerrainSettings& settings = m_world->getSettings();
+
+    for (int k = 0; k < DEPTH; ++k) {
+        for (int i = 0; i < WIDTH; ++i) {
+            float absoluteX = (float)(m_xChunk * WIDTH + i);
+            float absoluteZ = (float)(m_zChunk * DEPTH + k);
+
+            float noiseRaw = m_noise->getFractalNoise(
+                absoluteX * settings.frequency,
+                absoluteZ * settings.frequency,
+                settings.octaves,
+                settings.persistence,
+                settings.lacunarity
+            );
+            heightMap[i][k] = (int)((noiseRaw + 1.0f) * 0.5f * settings.amplitude);
+        }
+    }
+
+    // --- �TAPE 2 : REMPLISSAGE DES BLOCS (3D) ---
+    // Maintenant on monte en Y en utilisant simplement la valeur pr�-calcul�e
+    for (int j = 0; j < HEIGHT; ++j) {           // Y en premier (pour le cache m�moire)
+        for (int k = 0; k < DEPTH; ++k) {        // Z
+            for (int i = 0; i < WIDTH; ++i) {    // X en dernier
+
+                int hauteurFinale = heightMap[i][k];
+                int type = 0;
+
+                if (j <= hauteurFinale) {
+                    if (j < (hauteurFinale - 6)) type = 3; // Roche
+                    else if (j < hauteurFinale)  type = 1; // Terre
+                    else                         type = 2; // Herbe
+
+                    m_blocks[getIndex(i, j, k)].type = type;
+                }
+                // Pas besoin du else (type = 0), car m_blocks.assign a d�j� mis tout � l'air !
+            }
+        }
+    }
+    
+    m_vao = new VAO();
+    m_vao->Bind();
+
+    // On pr�pare le VBO/EBO mais on ne met pas de donn�es encore (nullptr)
+    m_vbo = new VBO(nullptr, 0); // Taille 0 pour l'instant
+    m_ebo = new EBO(nullptr, 0);
+
+    m_vao->Unbind();
+    m_vbo->Unbind();
+    m_ebo->Unbind();
+
+    std::cout << "Generation: Chunk " << m_xChunk << ", " << m_zChunk << " genere" << std::endl;
+}
+
+Chunk::~Chunk()
+{
+    // Nettoyage de la m�moire (RAII manuel car on utilise des pointeurs bruts)
+    m_vao->Delete(); delete m_vao;
+    m_vbo->Delete(); delete m_vbo;
+    m_ebo->Delete(); delete m_ebo;
+}
+
+// R�cup�re un bloc avec v�rification des limites locales
+uint8_t Chunk::getBlock(int localX, int localY, int localZ) const
+{
+    if (localX < 0 || localX >= WIDTH ||
+        localY < 0 || localY >= HEIGHT ||
+        localZ < 0 || localZ >= DEPTH)
+        return 0; // Air par d�faut si hors limites
+
+    return m_blocks[getIndex(localX, localY, localZ)].type;
+}
+
+void Chunk::setBlock(int localX, int localY, int localZ, uint8_t type)
+{
+    if (localX >= 0 && localX < WIDTH &&
+        localY >= 0 && localY < HEIGHT &&
+        localZ >= 0 && localZ < DEPTH)
+    {
+        m_blocks[getIndex(localX, localY, localZ)].type = type;
+        markDirty(); // Le mesh devra �tre reconstruit
+    }
+}
+
+void Chunk::markDirty()
+{
+    m_isDirty = true;
+}
+
+ChunkData Chunk::buildMeshCPU()
+{
+    m_isDirty = false;
+    ChunkData data;
+    data.cx = m_xChunk;
+    data.cz = m_zChunk;
+
+    for (int y = 0; y < HEIGHT; y++) {           // Y en premier
+        for (int z = 0; z < DEPTH; z++) {       // Z
+            for (int x = 0; x < WIDTH; x++) {   // X en dernier
+                uint8_t type = getBlock(x, y, z);
+                if (type == 0) continue;
+
+                // On v�rifie chaque voisin avec notre nouvelle fonction
+                if (shouldRenderFace(x + 1, y, z)) addFaceGeometry(data.vertices, data.indices, x, y, z, 0, type); // +X
+                if (shouldRenderFace(x - 1, y, z)) addFaceGeometry(data.vertices, data.indices, x, y, z, 1, type); // -X
+                if (shouldRenderFace(x, y + 1, z)) addFaceGeometry(data.vertices, data.indices, x, y, z, 2, type); // +Y
+                if (shouldRenderFace(x, y - 1, z)) addFaceGeometry(data.vertices, data.indices, x, y, z, 3, type); // -Y
+                if (shouldRenderFace(x, y, z + 1)) addFaceGeometry(data.vertices, data.indices, x, y, z, 4, type); // +Z
+                if (shouldRenderFace(x, y, z - 1)) addFaceGeometry(data.vertices, data.indices, x, y, z, 5, type); // -Z
+            }
+        }
+    }
+    return data;
+}
+
+void Chunk::addFaceGeometry(std::vector<GLfloat>& vertices, std::vector<GLuint>& indices, int x, int y, int z, int faceDir, int blockType)
+{
+    // 1. Calculer l'index de d�part pour les indices
+    // (vertices contient 5 floats par sommet : x, y, z, u, v)
+    GLuint startIndex = static_cast<GLuint>(vertices.size() / 6);
+
+    // 2. Calculer l'ID de la Texture
+    // faceDir: 0=Right, 1=Left (Side), 2=Top, 3=Bottom, 4=Front, 5=Back (Side)
+    int texTypeIndex = 2; // Par d�faut Side
+    if (faceDir == 2) texTypeIndex = 0; // Top
+    else if (faceDir == 3) texTypeIndex = 1; // Bottom
+
+    // On r�cup�re l'ID de texture depuis la map statique
+    // Attention: il faut g�rer le cas o� le blockType n'est pas dans la map (crash prevention)
+    int texID = 0;
+    if (BLOCK_TYPES.find(blockType) != BLOCK_TYPES.end()) {
+        texID = BLOCK_TYPES.at(blockType)[texTypeIndex];
+    }
+
+    // Calcul UV Atlas
+    float uMin = (texID % 16) / 16.0f;
+    float vMin = 1.0f - ((texID / 16) / 16.0f) - 0.0625f; // Inversion Y standard OpenGL
+
+    // On pr�pare les directions pour l'AO selon la face (exemple pour Face_POS_Y)
+    // Pour chaque sommet (n=0..3), on d�finit les 3 voisins � tester
+    int ao[4];
+
+    if (faceDir == 0) { // +X (Right)
+        ao[0] = getAO(x + 1, y, z, { 0,0,1 }, { 0,-1,0 }, { 0,-1,1 });
+        ao[1] = getAO(x + 1, y, z, { 0,0,1 }, { 0, 1,0 }, { 0, 1,1 });
+        ao[2] = getAO(x + 1, y, z, { 0,0,-1 }, { 0, 1,0 }, { 0, 1,-1 });
+        ao[3] = getAO(x + 1, y, z, { 0,0,-1 }, { 0,-1,0 }, { 0,-1,-1 });
+    }
+    else if (faceDir == 1) { // -X (Left)
+        ao[0] = getAO(x - 1, y, z, { 0,0,-1 }, { 0,-1,0 }, { 0,-1,-1 });
+        ao[1] = getAO(x - 1, y, z, { 0,0,-1 }, { 0, 1,0 }, { 0, 1,-1 });
+        ao[2] = getAO(x - 1, y, z, { 0,0,1 }, { 0, 1,0 }, { 0, 1,1 });
+        ao[3] = getAO(x - 1, y, z, { 0,0,1 }, { 0,-1,0 }, { 0,-1,1 });
+    }
+    else if (faceDir == 2) { // +Y (Top)
+        ao[0] = getAO(x, y + 1, z, { -1,0,0 }, { 0,0,1 }, { -1,0,1 });
+        ao[1] = getAO(x, y + 1, z, { 1,0,0 }, { 0,0,1 }, { 1,0,1 });
+        ao[2] = getAO(x, y + 1, z, { 1,0,0 }, { 0,0,-1 }, { 1,0,-1 });
+        ao[3] = getAO(x, y + 1, z, { -1,0,0 }, { 0,0,-1 }, { -1,0,-1 });
+    }
+    else if (faceDir == 3) { // -Y (Bottom)
+        ao[0] = getAO(x, y - 1, z, { -1,0,0 }, { 0,0,-1 }, { -1,0,-1 });
+        ao[1] = getAO(x, y - 1, z, { 1,0,0 }, { 0,0,-1 }, { 1,0,-1 });
+        ao[2] = getAO(x, y - 1, z, { 1,0,0 }, { 0,0,1 }, { 1,0,1 });
+        ao[3] = getAO(x, y - 1, z, { -1,0,0 }, { 0,0,1 }, { -1,0,1 });
+    }
+    else if (faceDir == 4) { // +Z (Front)
+        ao[0] = getAO(x, y, z + 1, { 1,0,0 }, { 0,-1,0 }, { 1,-1,0 });
+        ao[1] = getAO(x, y, z + 1, { 1,0,0 }, { 0, 1,0 }, { 1, 1,0 });
+        ao[2] = getAO(x, y, z + 1, { -1,0,0 }, { 0, 1,0 }, { -1, 1,0 });
+        ao[3] = getAO(x, y, z + 1, { -1,0,0 }, { 0,-1,0 }, { -1,-1,0 });
+    }
+    else if (faceDir == 5) { // -Z (Back)
+        ao[0] = getAO(x, y, z - 1, { -1,0,0 }, { 0,-1,0 }, { -1,-1,0 });
+        ao[1] = getAO(x, y, z - 1, { -1,0,0 }, { 0, 1,0 }, { -1, 1,0 });
+        ao[2] = getAO(x, y, z - 1, { 1,0,0 }, { 0, 1,0 }, { 1, 1,0 });
+        ao[3] = getAO(x, y, z - 1, { 1,0,0 }, { 0,-1,0 }, { 1,-1,0 });
+    }
+
+    // 3. Ajouter les 4 sommets de la face
+    for (int n = 0; n < 4; n++) {
+        // Position (Mod�le + Monde)
+        vertices.push_back(STRIDE_VERTICES[faceDir][n][0] + x);
+        vertices.push_back(STRIDE_VERTICES[faceDir][n][1] + y);
+        vertices.push_back(STRIDE_VERTICES[faceDir][n][2] + z);
+
+        // UVs (Atlas)
+        float uOffset = STRIDE_UVS[n][0] * 0.0625f;
+        float vOffset = STRIDE_UVS[n][1] * 0.0625f;
+        vertices.push_back(uMin + uOffset);
+        vertices.push_back(vMin + vOffset);
+
+        // Conversion de 0..3 vers 0.4..1.0 pour un ombrage doux
+        float aoFactor = 0.4f + (ao[n] / 3.0f) * 0.6f;
+        vertices.push_back(aoFactor);
+    }
+
+    // 4. Ajouter les indices (2 triangles pour faire un carr�)
+    // On remplace ta partie indices par ceci :
+    if (ao[0] + ao[2] < ao[1] + ao[3]) {
+        // Diagonale invers�e
+        indices.push_back(startIndex + 1);
+        indices.push_back(startIndex + 2);
+        indices.push_back(startIndex + 3);
+        indices.push_back(startIndex + 3);
+        indices.push_back(startIndex + 0);
+        indices.push_back(startIndex + 1);
+    }
+    else {
+        // Diagonale standard
+        indices.push_back(startIndex + 0);
+        indices.push_back(startIndex + 1);
+        indices.push_back(startIndex + 2);
+        indices.push_back(startIndex + 2);
+        indices.push_back(startIndex + 3);
+        indices.push_back(startIndex + 0);
+    }
+}
+
+void Chunk::uploadMeshToGPU(const ChunkData& data)
+{
+    if(data.vertices.empty()) return;
+    m_vao->Bind();
+
+    m_vbo->Bind();
+    glBufferData(GL_ARRAY_BUFFER, data.vertices.size() * sizeof(GLfloat), data.vertices.data(), GL_STATIC_DRAW);
+
+    m_ebo->Bind();
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.indices.size() * sizeof(GLuint), data.indices.data(), GL_STATIC_DRAW);
+
+    // Attributs : 0 = Pos (3 floats), 1 = UV (2 floats), 2 = AO (1 float) -> Total stride = 6 floats
+    m_vao->LinkAttrib(*m_vbo, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0);                   // Pos
+    m_vao->LinkAttrib(*m_vbo, 1, 2, GL_FLOAT, 6 * sizeof(float), (void*)(3 * sizeof(float))); // UV
+    m_vao->LinkAttrib(*m_vbo, 2, 1, GL_FLOAT, 6 * sizeof(float), (void*)(5 * sizeof(float))); // AO
+
+    m_indexCount = static_cast<int>(data.indices.size());
+    m_isReadyToDraw = true; // AUTORISATION DE DESSINER
+
+    m_vao->Unbind();
+    m_vbo->Unbind();
+    m_ebo->Unbind();
+}
+
+void Chunk::draw(Camera& camera, bool wireframeMode, int maxGeneration)
+{
+    if (!m_isReadyToDraw || m_indexCount == 0) return;
+
+    m_shaderProgram->Activate();
+    // Envoie la position de la cam�ra pour le calcul du brouillard
+    glUniform3f(glGetUniformLocation(m_shaderProgram->ID, "camPos"), camera.getPosition().x, camera.getPosition().y, camera.getPosition().z);
+    glUniform1i(glGetUniformLocation(m_shaderProgram->ID, "maxDistance"), maxGeneration);
+    m_texture->Bind();
+
+    // Mise � jour de la matrice cam�ra
+    camera.Matrix(90.0f, 0.1f, float(maxGeneration * 16 + 16), *m_shaderProgram, "camMatrix");
+
+    // Position du Chunk dans le monde (Model Matrix)
+    // Ici, le VBO contient des coordonn�es locales (0..15). 
+    // On doit d�placer le chunk � sa position m_xChunk * 16
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(m_xChunk * WIDTH, 0, m_zChunk * DEPTH));
+    glUniformMatrix4fv(glGetUniformLocation(m_shaderProgram->ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+
+    m_vao->Bind();
+
+    // Mode fil de fer optionnel
+    if (wireframeMode)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    else
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    m_ebo->Bind();
+    glDrawElements(GL_TRIANGLES, m_indexCount, GL_UNSIGNED_INT, 0);
+
+    m_vao->Unbind();
+}
+
+bool Chunk::shouldRenderFace(int x, int y, int z) const
+{
+    // 1. Si on d�passe les limites verticales (Y), c'est du vide, donc on dessine la face
+    if (y < 0 || y >= HEIGHT) return true;
+
+    // 2. Si on est � l'int�rieur du chunk (entre 0 et 15 sur X et Z)
+    if (x >= 0 && x < WIDTH && z >= 0 && z < DEPTH)
+    {
+        return getBlock(x, y, z) == 0;
+    }
+
+    // 3. Si on est sur le bord du chunk, on doit demander au MONDE (m_world)
+    // car le voisin se trouve dans un AUTRE chunk.
+    int worldX = m_xChunk * WIDTH + x;
+    int worldZ = m_zChunk * DEPTH + z;
+
+    return m_world->getBlock(worldX, y, worldZ) == 0;
+}
+
+int Chunk::getAO(int x, int y, int z, glm::ivec3 plane1, glm::ivec3 plane2, glm::ivec3 corner) {
+    // ON CONVERTIT EN COORDONN�ES MONDE
+    int wx = m_xChunk * WIDTH + x;
+    int wz = m_zChunk * DEPTH + z;
+
+    // On demande au monde en utilisant les coordonn�es absolues
+    bool s1 = m_world->getBlock(wx + plane1.x, y + plane1.y, wz + plane1.z) > 0;
+    bool s2 = m_world->getBlock(wx + plane2.x, y + plane2.y, wz + plane2.z) > 0;
+    bool c = m_world->getBlock(wx + corner.x, y + corner.y, wz + corner.z) > 0;
+
+    if (s1 && s2) return 0;
+    return 3 - (s1 + s2 + c);
+}
